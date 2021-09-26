@@ -98,50 +98,51 @@ def plot(population):
     plt.close()
 
 
-state = State.Crashed
-initial = True
-found_solution = False
-while not found_solution:
-    if initial:
-        population = create_random_population()
-        initial = False
-    else:
-        # Perform generic algorithm. First select the fittest
-        removed_ids = []
-        for id, organism in population.items():
-            if organism['score'] >= average_score:
-                removed_ids.append(id)
-        for id in removed_ids:
-            population.pop(id)
+def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y):
+    state = State.Crashed
+    initial = True
+    found_solution = False
+    while not found_solution:
+        if initial:
+            population = create_random_population()
+            initial = False
+        else:
+            # Perform generic algorithm. First select the fittest
+            removed_ids = []
+            for id, organism in population.items():
+                if organism['score'] >= average_score:
+                    removed_ids.append(id)
+            for id in removed_ids:
+                population.pop(id)
 
-        # Now breed more organisms
-        children = {}
-        # sorted_population = sorted(population.keys(), key=population.get("score"))
-        sorted_population = sorted(population.items(), key=lambda x: x[1]['score'])
-        for i in range(len(removed_ids)):
-            # parent1, parent2 = [e['chromosome'] for e in sample(list(population.values()), 2)]
-            parent1 = sorted_population[randint(0, min(5, len(population) - 1))][1]["chromosome"]
-            parent2 = sorted_population[randint(0, len(population) - 1)][1]["chromosome"]
-            child_chromosome = []
-            for j in range(CHROMOSOME_LENGTH):
-                factor = random()
-                # child_chromosome.append([round(parent1[j][m] * factor + parent2[j][m] * (1 - factor)) for m in range(2)])
-                child_chromosome.append(parent1[j] if factor < 0.5 else parent2[j])
-                if random() < 0.05:
-                    child_chromosome[-1] = [randint(-1, 1), randint(-1, 1)]
-            children[removed_ids[i]] = {'chromosome': child_chromosome}
-        population.update(children)
+            # Now breed more organisms
+            children = {}
+            # sorted_population = sorted(population.keys(), key=population.get("score"))
+            sorted_population = sorted(population.items(), key=lambda x: x[1]['score'])
+            for i in range(len(removed_ids)):
+                # parent1, parent2 = [e['chromosome'] for e in sample(list(population.values()), 2)]
+                parent1 = sorted_population[randint(0, min(5, len(population) - 1))][1]["chromosome"]
+                parent2 = sorted_population[randint(0, len(population) - 1)][1]["chromosome"]
+                child_chromosome = []
+                for j in range(CHROMOSOME_LENGTH):
+                    factor = random()
+                    # child_chromosome.append([round(parent1[j][m] * factor + parent2[j][m] * (1 - factor)) for m in range(2)])
+                    child_chromosome.append(parent1[j] if factor < 0.5 else parent2[j])
+                    if random() < 0.05:
+                        child_chromosome[-1] = [randint(-1, 1), randint(-1, 1)]
+                children[removed_ids[i]] = {'chromosome': child_chromosome}
+            population.update(children)
 
-    scores = []
-    for organism in population.values():
-        state, path_x, path_y, score = evaluate_path(INITIAL_X, INITIAL_Y, land_x, land_y, 1, organism['chromosome'])
-        organism['path_x'] = path_x
-        organism['path_y'] = path_y
-        organism['score'] = score
-        scores.append(score)
-    scores.sort()
-    found_solution = scores[0] == 0
-    print(scores)
-    average_score = scores[POPULATION_SIZE // 4]  # Take the median
-    # plot(population)
-plot(population)
+        scores = []
+        for organism in population.values():
+            state, path_x, path_y, score = evaluate_path(INITIAL_X, INITIAL_Y, land_x, land_y, 1, organism['chromosome'])
+            organism['path_x'] = path_x
+            organism['path_y'] = path_y
+            organism['score'] = score
+            scores.append(score)
+        scores.sort()
+        found_solution = scores[0] == 0
+        print(scores)
+        average_score = scores[POPULATION_SIZE // 4]  # Take the median
+        # plot(population)
+    plot(population)
