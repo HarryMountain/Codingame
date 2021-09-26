@@ -35,7 +35,7 @@ def create_random_population():
             chromosome.append([new_r - current_r, new_p - current_p])
             current_r = new_r
             current_p = new_p
-        population[i] = {'chromosome': chromosome}
+        population[i] = {'chromosome': chromosome, 'calculated': False}
     return population
 
 
@@ -96,14 +96,17 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel, land_x,
         else:
             # Perform generic algorithm. First select the fittest
             sorted_population = sorted(population.items(), key=lambda x: x[1]['score'])
-            number_to_keep = POPULATION_SIZE // 4
+            number_to_keep = POPULATION_SIZE // 2
             removed_ids = [i[0] for i in sorted_population[number_to_keep:]]
 
             # Now breed more organisms
             children = {}
+            parent_index = 0
             for i in range(len(removed_ids)):
-                parent1 = sorted_population[randint(0, min(5, number_to_keep - 1))][1]["chromosome"]
-                parent2 = sorted_population[randint(0, number_to_keep - 1)][1]["chromosome"]
+                parent1 = sorted_population[parent_index][1]['chromosome']
+                parent_index = (parent_index + 1) % number_to_keep
+                parent2 = sorted_population[parent_index][1]['chromosome']
+                parent_index = (parent_index + 1) % number_to_keep
                 child_chromosome = []
                 for j in range(CHROMOSOME_LENGTH):
                     factor = random()
@@ -111,16 +114,18 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel, land_x,
                     child_chromosome.append(parent1[j] if factor < 0.5 else parent2[j])
                     if random() < 0.01:
                         child_chromosome[-1] = [randint(-2, 2), randint(-1, 1)]
-                children[removed_ids[i]] = {'chromosome': child_chromosome}
+                children[removed_ids[i]] = {'chromosome': child_chromosome, 'calculated': False}
             population.update(children)
 
         scores = []
         for organism in population.values():
-            state, path_x, path_y, score = evaluate_path(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, 1, organism['chromosome'], landing_area_min, landing_area_max)
-            organism['path_x'] = path_x
-            organism['path_y'] = path_y
-            organism['score'] = score
-            scores.append(score)
+            if not organism['calculated']:
+                state, path_x, path_y, score = evaluate_path(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, 1, organism['chromosome'], landing_area_min, landing_area_max)
+                organism['path_x'] = path_x
+                organism['path_y'] = path_y
+                organism['score'] = score
+                organism['calculated'] = True
+            scores.append(organism['score'])
         scores.sort()
         found_solution = scores[0] == 0
         print(scores)
