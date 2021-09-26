@@ -7,13 +7,8 @@ from random import randint, random
 GRAVITY = -3.711
 CHROMOSOME_LENGTH = 80
 POPULATION_SIZE = 40
-
 SIN_R = []
 COS_R = []
-for r in range(-90, 91):
-    r_radians = math.radians(r)
-    SIN_R.append(math.sin(r_radians))
-    COS_R.append(math.cos(r_radians))
 
 
 class State(Enum):
@@ -23,10 +18,12 @@ class State(Enum):
 
 
 def get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y):
-    points = max(0.9 * landing_min + 0.1 * landing_max - x, 0) + max(x - 0.9 * landing_max - 0.1 * landing_min, 0) + max(y - landing_y, 0)
-    points += max(abs(hs) - 20, 0) * 25
+    points = max(0.8 * landing_min + 0.2 * landing_max - x, 0) + max(x - 0.8 * landing_max - 0.2 * landing_min, 0) + max(y - landing_y, 0)
+    points += max(abs(hs) - 20, 0) * 50
     points += max(abs(vs) - 40, 0) * 25
     points += abs(r) * 25
+    #if points < 5000:
+    #    print(round(points), round(max(0.9 * landing_min + 0.1 * landing_max - x, 0) + max(x - 0.9 * landing_max - 0.1 * landing_min, 0) + max(y - landing_y, 0)), round(max(abs(hs) - 20, 0) * 25), max(abs(vs) - 40, 0) * 25, round(abs(r) * 25))
     return round(points)
 
 
@@ -34,27 +31,10 @@ def create_random_population(r_init, p_init):
     population = {}
     for i in range(POPULATION_SIZE):
         chromosome = []
-        r = randint(-90, 90)
-        p = randint(0, 4)
         r_base = randint(-10, 10)
-        p_base = randint(-1, 1)
-        #r_diff = randint(-15, 15)
-        #p_diff = randint(-1, 1)
-        last_saved_r = r_init
-        last_saved_p = p_init
-        #chromosome = [[r_diff, p_diff]] * CHROMOSOME_LENGTH
-
         for j in range(CHROMOSOME_LENGTH):
-            chromosome.append([min(15, max(-15, r_base + randint(-15, 15))), min(1, max(-1, p_base + randint(-1, 1)))])
-            """
-            r = r + randint(-15, 15)
-            p = p + randint(-1, 1)
-            new_saved_r = min(15, max(-15, r - last_saved_r))
-            new_saved_p = min(-1, max(1, p - last_saved_p))
-            chromosome.append([min(15, max(-15, new_saved_r - last_saved_r)), min(1, max(-1, new_saved_p - last_saved_p))])
-            last_saved_r = new_saved_r
-            last_saved_p = new_saved_p
-            """
+            power = randint(-1, 1) if j < CHROMOSOME_LENGTH // 2 else randint(0, 1)
+            chromosome.append([min(15, max(-15, r_base + randint(-15, 15))), power])
         population[i] = {'chromosome': chromosome, 'calculated': False}
     return population
 
@@ -101,6 +81,12 @@ def plot(population, land_x, land_y, pause_time):
 
 
 def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, land_x, land_y):
+    # Pre-calculate sin and cos values
+    for r in range(-90, 91):
+        r_radians = math.radians(r)
+        SIN_R.append(math.sin(r_radians))
+        COS_R.append(math.cos(r_radians))
+
     # Find landing zone
     for i in range(len(land_x) - 1):
         if land_y[i] == land_y[i + 1]:
@@ -130,9 +116,13 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
                 parent_index = (parent_index + 1) % number_to_keep
                 child_chromosome = []
                 factor = random()
+                cut_chromosome = randint(0, CHROMOSOME_LENGTH)
                 for j in range(CHROMOSOME_LENGTH):
                     child_chromosome.append([round(parent1['chromosome'][j][m] * factor + parent2['chromosome'][j][m] * (1 - factor)) for m in range(2)])
+                    if j == cut_chromosome:
+                        factor = 1 - factor
                     mutation_rate = 0.1 if parent1['score'] == parent2['score'] else 0.05
+                    # mutation_rate = 0.01
                     if random() < mutation_rate:
                         child_chromosome[-1] = [randint(-15, 15), randint(-1, 1)]
                 children[removed_ids[i]] = {'chromosome': child_chromosome, 'calculated': False}
@@ -151,6 +141,6 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
             scores.append(organism['score'])
         scores.sort()
         found_solution = scores[0] == 0
-        print(scores)
+        #print(scores)
         #plot(population, land_x, land_y, 0.5)
-    plot(population, land_x, land_y, 20)
+    #plot(population, land_x, land_y, 20)
