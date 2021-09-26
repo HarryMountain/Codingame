@@ -2,7 +2,7 @@ import math
 import matplotlib.pyplot as plt
 from enum import Enum
 import numpy as np
-from random import randint, random
+from random import randint, random, sample
 
 GRAVITY = -3.711
 CHROMOSOME_LENGTH = 80
@@ -103,17 +103,18 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
         else:
             # Perform generic algorithm. First select the fittest
             sorted_population = sorted(population.items(), key=lambda x: x[1]['score'])
-            number_to_keep = POPULATION_SIZE // 4
+            number_to_keep = POPULATION_SIZE // 2
             removed_ids = [i[0] for i in sorted_population[number_to_keep:]]
 
             # Now breed more organisms
             children = {}
             parent_index = 0
             for i in range(len(removed_ids)):
-                parent1 = sorted_population[parent_index][1]
-                parent_index = (parent_index + 1) % number_to_keep
-                parent2 = sorted_population[parent_index][1]
-                parent_index = (parent_index + 1) % number_to_keep
+                #parent1 = sorted_population[parent_index][1]
+                #parent_index = (parent_index + 1) % number_to_keep
+                #parent2 = sorted_population[parent_index][1]
+                #parent_index = (parent_index + 1) % number_to_keep
+                parent1, parent2 = [i[1] for i in sample(sorted_population[:number_to_keep], 2)]
                 child_chromosome = []
                 factor = random()
                 cut_chromosome = randint(0, CHROMOSOME_LENGTH)
@@ -121,7 +122,7 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
                     child_chromosome.append([round(parent1['chromosome'][j][m] * factor + parent2['chromosome'][j][m] * (1 - factor)) for m in range(2)])
                     if j == cut_chromosome:
                         factor = 1 - factor
-                    mutation_rate = 0.1 if parent1['score'] == parent2['score'] else 0.05
+                    mutation_rate = 0.2 if parent1['score'] == parent2['score'] else 0.1
                     # mutation_rate = 0.01
                     if random() < mutation_rate:
                         child_chromosome[-1] = [randint(-15, 15), randint(-1, 1)]
@@ -141,6 +142,6 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
             scores.append(organism['score'])
         scores.sort()
         found_solution = scores[0] == 0
-        #print(scores)
+        print(scores)
         #plot(population, land_x, land_y, 0.5)
     #plot(population, land_x, land_y, 20)
