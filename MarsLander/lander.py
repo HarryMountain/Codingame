@@ -98,21 +98,19 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel, land_x,
             sorted_population = sorted(population.items(), key=lambda x: x[1]['score'])
             number_to_keep = POPULATION_SIZE // 4
             removed_ids = [i[0] for i in sorted_population[number_to_keep:]]
-            for id in removed_ids:
-                population.pop(id)
 
             # Now breed more organisms
             children = {}
             for i in range(len(removed_ids)):
-                parent1 = sorted_population[randint(0, min(5, len(population) - 1))][1]["chromosome"]
-                parent2 = sorted_population[randint(0, len(population) - 1)][1]["chromosome"]
+                parent1 = sorted_population[randint(0, min(5, number_to_keep - 1))][1]["chromosome"]
+                parent2 = sorted_population[randint(0, number_to_keep - 1)][1]["chromosome"]
                 child_chromosome = []
                 for j in range(CHROMOSOME_LENGTH):
                     factor = random()
                     # child_chromosome.append([round(parent1[j][m] * factor + parent2[j][m] * (1 - factor)) for m in range(2)])
                     child_chromosome.append(parent1[j] if factor < 0.5 else parent2[j])
-                    if random() < 0.05:
-                        child_chromosome[-1] = [randint(-1, 1), randint(-1, 1)]
+                    if random() < 0.01:
+                        child_chromosome[-1] = [randint(-2, 2), randint(-1, 1)]
                 children[removed_ids[i]] = {'chromosome': child_chromosome}
             population.update(children)
 
@@ -126,5 +124,5 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel, land_x,
         scores.sort()
         found_solution = scores[0] == 0
         print(scores)
-        # plot(population, land_x, land_y, 0.5)
+        #plot(population, land_x, land_y, 0.5)
     plot(population, land_x, land_y, 20)
