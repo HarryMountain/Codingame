@@ -7,10 +7,6 @@ from random import randint, choice, random, sample
 GRAVITY = -3.711
 CHROMOSOME_LENGTH = 80
 POPULATION_SIZE = 40
-INITIAL_HS = -100
-INITIAL_R = 90
-INITIAL_X = 6500
-INITIAL_Y = 2800
 
 
 class State(Enum):
@@ -19,18 +15,8 @@ class State(Enum):
     Crashed = 3
 
 
-# land_x = [0, 1000, 1500, 3000, 4000, 5500, 6999]
-# land_y = [100, 500, 1500, 1000, 150, 150, 800]
-land_x = [0, 1000, 1500, 3000, 3500, 3700, 5000, 5800, 6000, 6999]
-land_y = [100, 500, 100, 100, 500, 200, 1500, 300, 1000, 2000]
-for i in range(len(land_x) - 1):
-    if land_y[i] == land_y[i + 1]:
-        landing_area_min = land_x[i]
-        landing_area_max = land_x[i + 1]
-
-
-def get_score(x, hs, vs, r):
-    points = max(0.85 * landing_area_min + 0.15 * landing_area_max - x, 0) + max(x - 0.85 * landing_area_max - 0.15 * landing_area_min, 0)
+def get_score(x, hs, vs, r, landing_min, landing_max):
+    points = max(0.85 * landing_min + 0.15 * landing_max - x, 0) + max(x - 0.85 * landing_max - 0.15 * landing_min, 0)
     points += max(abs(hs) - 20, 0) * 25
     points += max(abs(vs) - 40, 0) * 25
     points += abs(r) * 25
@@ -53,37 +39,33 @@ def create_random_population():
     return population
 
 
-def evaluate_path(x, y, land_x, land_y, fuel, chromosome):
+def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_min, landing_max):
     path_x = [x]
     path_y = [y]
     state = State.Flying
     score = 50000
-    current_r = INITIAL_R
-    current_p = 0
-    hs = INITIAL_HS
-    vs = 0
     index = 0
     while state == State.Flying and index < CHROMOSOME_LENGTH:
-        radians_r = math.radians(current_r)
-        ha = -current_p * math.sin(radians_r)
-        va = current_p * math.cos(radians_r) + GRAVITY
+        radians_r = math.radians(r)
+        ha = -p * math.sin(radians_r)
+        va = p * math.cos(radians_r) + GRAVITY
         x += hs + ha / 2
         y += vs + va / 2
         hs += ha
         vs += va
         land_height = np.interp(x, land_x, land_y, left=None, right=None, period=None)
         if y <= land_height:
-            score = get_score(x, hs, vs, current_r)
+            score = get_score(x, hs, vs, r, landing_min, landing_max)
             state = State.Landed if score == 0 else State.Crashed
-        current_r = max(-90, min(90, current_r + chromosome[index][0]))
-        current_p = max(0, min(4, current_p + chromosome[index][1]))
+        r = max(-90, min(90, r + chromosome[index][0]))
+        p = max(0, min(4, p + chromosome[index][1]))
         path_x.append(round(x))
         path_y.append(round(y))
         index += 1
     return [state, path_x, path_y, score]
 
 
-def plot(population):
+def plot(population, land_x, land_y, pause_time):
     plt.figure(figsize=(11.5, 4.5))
     ax = plt.gca()
     ax.set_facecolor('black')
@@ -94,12 +76,17 @@ def plot(population):
         score = population[i]['score']
         ax.plot(population[i]['path_x'], population[i]['path_y'], color='white' if score == 0 else 'green' if score < 2000 else 'yellow', zorder=1 if score == 0 else 0)
     plt.show(block=False)
-    plt.pause(20)
+    plt.pause(pause_time)
     plt.close()
 
 
-def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y):
-    state = State.Crashed
+def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel, land_x, land_y):
+    # Find landing zone
+    for i in range(len(land_x) - 1):
+        if land_y[i] == land_y[i + 1]:
+            landing_area_min = land_x[i]
+            landing_area_max = land_x[i + 1]
+
     initial = True
     found_solution = False
     while not found_solution:
@@ -108,19 +95,15 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_
             initial = False
         else:
             # Perform generic algorithm. First select the fittest
-            removed_ids = []
-            for id, organism in population.items():
-                if organism['score'] >= average_score:
-                    removed_ids.append(id)
+            sorted_population = sorted(population.items(), key=lambda x: x[1]['score'])
+            number_to_keep = POPULATION_SIZE // 4
+            removed_ids = [i[0] for i in sorted_population[number_to_keep:]]
             for id in removed_ids:
                 population.pop(id)
 
             # Now breed more organisms
             children = {}
-            # sorted_population = sorted(population.keys(), key=population.get("score"))
-            sorted_population = sorted(population.items(), key=lambda x: x[1]['score'])
             for i in range(len(removed_ids)):
-                # parent1, parent2 = [e['chromosome'] for e in sample(list(population.values()), 2)]
                 parent1 = sorted_population[randint(0, min(5, len(population) - 1))][1]["chromosome"]
                 parent2 = sorted_population[randint(0, len(population) - 1)][1]["chromosome"]
                 child_chromosome = []
@@ -135,7 +118,7 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_
 
         scores = []
         for organism in population.values():
-            state, path_x, path_y, score = evaluate_path(INITIAL_X, INITIAL_Y, land_x, land_y, 1, organism['chromosome'])
+            state, path_x, path_y, score = evaluate_path(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, 1, organism['chromosome'], landing_area_min, landing_area_max)
             organism['path_x'] = path_x
             organism['path_y'] = path_y
             organism['score'] = score
@@ -143,6 +126,5 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_
         scores.sort()
         found_solution = scores[0] == 0
         print(scores)
-        average_score = scores[POPULATION_SIZE // 4]  # Take the median
-        # plot(population)
-    plot(population)
+        # plot(population, land_x, land_y, 0.5)
+    plot(population, land_x, land_y, 20)
