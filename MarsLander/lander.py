@@ -30,8 +30,6 @@ def get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y):
     points += max(abs(hs) - 20, 0) * 25
     points += max(abs(vs) - 40, 0) * 25
     points += abs(r) * 25
-    #if points < 5000:
-    #    print(round(points), round(max(0.9 * landing_min + 0.1 * landing_max - x, 0) + max(x - 0.9 * landing_max - 0.1 * landing_min, 0) + max(y - landing_y, 0)), round(max(abs(hs) - 20, 0) * 25), max(abs(vs) - 40, 0) * 25, round(abs(r) * 25))
     return round(points)
 
 
@@ -44,8 +42,8 @@ def create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, l
             power = randint(-1, 1) if j < CHROMOSOME_LENGTH // 2 else randint(0, 1)
             chromosome.append([min(15, max(-15, r_base + randint(-15, 15))), power])
         score = evaluate_path(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init, chromosome,
-                      landing_area_min, landing_area_max, landing_area_y)[3]
-        random_population[score] = {'chromosome': chromosome, 'calculated': False}
+                      landing_area_min, landing_area_max, landing_area_y)[0]
+        random_population[score] = {'chromosome': chromosome}
     return random_population
 
 
@@ -66,13 +64,14 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
         if y <= land_height or fuel <= 0:
             score = get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y)
             state = State.Landed if score == 0 else State.Crashed
-        r = max(-90, min(90, r + chromosome[index][0]))
-        p = max(0, min(4, p + chromosome[index][1]))
+        else:
+            r = max(-90, min(90, r + chromosome[index][0]))
+            p = max(0, min(4, p + chromosome[index][1]))
         path_x.append(round(x))
         path_y.append(round(y))
         index += 1
         fuel -= p
-    return [state, path_x, path_y, score, fuel, index - 1, r]
+    return [score, state, fuel, index - 1, r, path_x, path_y]
 
 
 def plot(population, land_x, land_y, pause_time):
@@ -123,18 +122,16 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
             initial = False
         else:
             # Perform generic algorithm. First breed more organisms
-            sorted_population_keys = list(population.keys())
-            best_score = sorted_population_keys[0]
+            scores = list(population.keys())
+            best_score = scores[0]
             if best_score < LAST_BEST_SCORE:
                 LAST_BEST_SCORE = best_score
                 MUTATION_RATE = 0
-            else:
-                MUTATION_RATE = min(MAX_MUTATION, MUTATION_RATE + MUTATION_INCREMENT)
+            MUTATION_RATE = min(MAX_MUTATION, MUTATION_RATE + MUTATION_INCREMENT)
 
             children = {}
-            #for replace_idx in range(2, int(POPULATION_SIZE * (1 - PARENT_FRACTION))):
             for replace_idx in range(2, POPULATION_SIZE):
-                parent1, parent2 = [population[i] for i in sample(sorted_population_keys[:replace_idx], 2)]
+                parent1, parent2 = [population[i] for i in sample(scores[:replace_idx], 2)]
                 child_chromosome = []
                 factor = random()
                 cut_chromosome = randint(0, CHROMOSOME_LENGTH)
@@ -143,30 +140,42 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
                     if j == cut_chromosome:
                         factor = 1 - factor
 
-                score = evaluate_path(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init, child_chromosome, landing_area_min, landing_area_max, landing_area_y)[3]
-                children[score] = {'chromosome': child_chromosome, 'calculated': False, 'score': score}
+                score, state, fuel_left, last_gene, last_r, path_x, path_y = evaluate_path(x_init, y_init, hs_init,
+                                                                                           vs_init, r_init, p_init,
+                                                                                           land_x, land_y, fuel_init,
+                                                                                           child_chromosome,
+                                                                                           landing_area_min,
+                                                                                           landing_area_max,
+                                                                                           landing_area_y)
+                # Set latest rotation to maximise how upright we are
+                orig = child_chromosome[last_gene][0]
+                child_chromosome[last_gene][0] = max(-15, min(15, child_chromosome[last_gene][0] - last_r))
+                change = child_chromosome[last_gene][0] - orig
+                score -= abs(change) * 25
+                children[score] = {'chromosome': child_chromosome}
             population.update(children)
 
             # Now select the fittest
             population = dict(sorted(population.items()))
-            sorted_population_keys = list(population.keys())
-            for i in range(len(sorted_population_keys) - 1, POPULATION_SIZE, -1):
-                del population[sorted_population_keys[i]]
+            scores = list(population.keys())
+            for i in range(len(scores) - 1, POPULATION_SIZE, -1):
+                del population[scores[i]]
+            found_solution = scores[0] == 0
 
-        scores = []
+            # Output data
+            print(scores)
+            #plot(population, land_x, land_y, 0.5)
+    plot_chart = False
+    plot_chart = True
+    if plot_chart:
         for organism in population.values():
-            if not organism['calculated']:
-                state, path_x, path_y, score, fuel_left, last_gene, last_r = evaluate_path(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init, organism['chromosome'], landing_area_min, landing_area_max, landing_area_y)
-                organism['path_x'] = path_x
-                organism['path_y'] = path_y
-                organism['score'] = score
-                organism['calculated'] = True
-                # Set latest rotation to maximise how upright we are
-                organism['chromosome'][last_gene][0] = max(-15, min(15, organism['chromosome'][last_gene][0] - last_r))
-            scores.append(organism['score'])
-        scores.sort()
-        found_solution = scores[0] == 0
-        print(scores)
-        plot(population, land_x, land_y, 0.5)
-    print(last_gene)
-    plot(population, land_x, land_y, 20)
+            score, state, fuel_left, last_gene, last_r, path_x, path_y = evaluate_path(x_init, y_init, hs_init,
+                                                                                       vs_init, r_init, p_init,
+                                                                                       land_x, land_y, fuel_init,
+                                                                                       organism['chromosome'],
+                                                                                       landing_area_min,
+                                                                                       landing_area_max,
+                                                                                       landing_area_y)
+            organism['path_x'] = path_x
+            organism['path_y'] = path_y
+        plot(population, land_x, land_y, 20)
