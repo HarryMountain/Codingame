@@ -25,14 +25,16 @@ class State(Enum):
 
 
 def get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y):
-    points = max(0.8 * landing_min + 0.2 * landing_max - x, 0) + max(x - 0.8 * landing_max - 0.2 * landing_min, 0) + max(0, abs(y - landing_y) - abs(vs))
+    points = max(0.8 * landing_min + 0.2 * landing_max - x, 0) + max(x - 0.8 * landing_max - 0.2 * landing_min,
+                                                                     0) + max(0, abs(y - landing_y) - abs(vs))
     points += max(abs(hs) - 20, 0) * 25
     points += max(abs(vs) - 40, 0) * 25
     points += abs(r) * 25
     return round(points)
 
 
-def create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init, landing_area_min, landing_area_max, landing_area_y):
+def create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init,
+                             landing_area_min, landing_area_max, landing_area_y):
     random_population = {}
     for i in range(POPULATION_SIZE):
         chromosome = []
@@ -48,8 +50,11 @@ def create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, l
             dp = min(1, max(-1, p_base - p_act))
             p_act += dp
             chromosome.append([dr, dp])
-        score, state, fuel_left, last_gene, last_r, path_x, path_y = evaluate_path(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init, chromosome,
-                      landing_area_min, landing_area_max, landing_area_y)
+        score, state, fuel_left, last_gene, last_r, path_x, path_y = evaluate_path(x_init, y_init, hs_init, vs_init,
+                                                                                   r_init, p_init, land_x, land_y,
+                                                                                   fuel_init, chromosome,
+                                                                                   landing_area_min, landing_area_max,
+                                                                                   landing_area_y)
         random_population[score] = {'chromosome': chromosome, 'path_x': path_x, 'path_y': path_y}
     return random_population
 
@@ -81,14 +86,14 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
     return [score, state, fuel, index - 1, r, path_x, path_y]
 
 
-def plot(population, land_x, land_y, pause_time):
-    #fig, ax = plt.figure()
-    #fig = plt.get_previous_run_figure()
-    #ax = fig.axes
+def plot(plot_population, land_x, land_y, pause_time):
+    # fig, ax = plt.figure()
+    # fig = plt.get_previous_run_figure()
+    # ax = fig.axes
 
-    #noise = np.random.rand(1, 100)
-    #ax.plot(noise)
-    #plt.draw()
+    # noise = np.random.rand(1, 100)
+    # ax.plot(noise)
+    # plt.draw()
 
     plt.figure(figsize=(11.5, 4.5))
     ax = plt.gca()
@@ -96,8 +101,9 @@ def plot(population, land_x, land_y, pause_time):
     plt.xlim([0, 7000])
     plt.ylim([0, 3000])
     ax.plot(land_x, land_y, color='red')
-    for score, organism in population.items():
-        ax.plot(organism['path_x'], organism['path_y'], color='white' if score == 0 else 'green' if score < 1000 else 'yellow', zorder=1 if score == 0 else 0)
+    for score, organism in plot_population.items():
+        ax.plot(organism['path_x'], organism['path_y'],
+                color='white' if score == 0 else 'blue' if score < 100 else 'green' if score < 1000 else 'yellow', zorder=3 if score == 0 else 2 if score < 100 else 1 if score < 1000 else 0)
     plt.show(block=False)
     plt.pause(pause_time)
     plt.close()
@@ -105,7 +111,7 @@ def plot(population, land_x, land_y, pause_time):
 
 def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, land_x, land_y):
     # Pre-calculate sin and cos values
-    global LAST_BEST_SCORE, MUTATION_RATE, population
+    global LAST_BEST_SCORE, MUTATION_RATE
     for r in range(-90, 91):
         r_radians = math.radians(r)
         SIN_R.append(math.sin(r_radians))
@@ -121,58 +127,57 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
             landing_area_max = land_x[i + 1]
             landing_area_y = land_y[i]
 
-    initial = True
+    population = create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y,
+                                          fuel_init, landing_area_min, landing_area_max, landing_area_y)
     found_solution = False
     while not found_solution:
-        if initial:
-            population = create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init, landing_area_min, landing_area_max, landing_area_y)
-            initial = False
-        else:
-            # Perform generic algorithm. First breed more organisms
-            scores = list(population.keys())
-            best_score = scores[0]
-            MUTATION_RATE = max(0, min(max(MAX_MUTATION, best_score / 10000), MUTATION_RATE + MUTATION_INCREMENT * -1 if best_score < LAST_BEST_SCORE else 1))
-            LAST_BEST_SCORE = best_score
+        # Perform generic algorithm. First breed more organisms
+        scores = list(population.keys())
+        best_score = scores[0]
+        MUTATION_RATE = max(0, min(max(MAX_MUTATION, best_score / 10000),
+                                   MUTATION_RATE + MUTATION_INCREMENT * -1 if best_score < LAST_BEST_SCORE else 1))
+        LAST_BEST_SCORE = best_score
 
-            children = {}
-            for replace_idx in range(2, int(POPULATION_SIZE * PARENT_FRACTION)):
-                parent1, parent2 = [population[i] for i in sample(scores[:replace_idx], 2)]
-                child_chromosome = []
-                factor = random()
-                cut_chromosome = randint(0, CHROMOSOME_LENGTH)
-                for j in range(CHROMOSOME_LENGTH):
-                    new_gene = [round(parent1['chromosome'][j][m] * factor + parent2['chromosome'][j][m] * (1 - factor)) for m in range(2)]
-                    if random() < MUTATION_RATE:
-                        new_gene[0] += randint(-15, 15)
-                        new_gene[1] += randint(-1, 1)
-                    child_chromosome.append([min(15, max(-15, new_gene[0])), min(1, max(-1, new_gene[1]))])
-                    if j == cut_chromosome:
-                        factor = 1 - factor
+        children = {}
+        for replace_idx in range(2, int(POPULATION_SIZE * PARENT_FRACTION)):
+            parent1, parent2 = [population[i] for i in sample(scores[:replace_idx], 2)]
+            child_chromosome = []
+            factor = random()
+            cut_chromosome = randint(0, CHROMOSOME_LENGTH)
+            for j in range(CHROMOSOME_LENGTH):
+                new_gene = [round(parent1['chromosome'][j][m] * factor + parent2['chromosome'][j][m] * (1 - factor))
+                            for m in range(2)]
+                if random() < MUTATION_RATE:
+                    new_gene[0] += randint(-15, 15)
+                    new_gene[1] += randint(-1, 1)
+                child_chromosome.append([min(15, max(-15, new_gene[0])), min(1, max(-1, new_gene[1]))])
+                if j == cut_chromosome:
+                    factor = 1 - factor
 
-                score, state, fuel_left, last_gene, last_r, path_x, path_y = evaluate_path(x_init, y_init, hs_init,
-                                                                                           vs_init, r_init, p_init,
-                                                                                           land_x, land_y, fuel_init,
-                                                                                           child_chromosome,
-                                                                                           landing_area_min,
-                                                                                           landing_area_max,
-                                                                                           landing_area_y)
-                # Set latest rotation to maximise how upright we are
-                orig = child_chromosome[last_gene][0]
-                child_chromosome[last_gene][0] = max(-15, min(15, child_chromosome[last_gene][0] - last_r))
-                change = child_chromosome[last_gene][0] - orig
-                score -= abs(change) * 25
-                children[score] = {'chromosome': child_chromosome, 'path_x': path_x, 'path_y': path_y}
+            score, state, fuel_left, last_gene, last_r, path_x, path_y = evaluate_path(x_init, y_init, hs_init,
+                                                                                       vs_init, r_init, p_init,
+                                                                                       land_x, land_y, fuel_init,
+                                                                                       child_chromosome,
+                                                                                       landing_area_min,
+                                                                                       landing_area_max,
+                                                                                       landing_area_y)
+            # Set latest rotation to maximise how upright we are
+            orig = child_chromosome[last_gene][0]
+            child_chromosome[last_gene][0] = max(-15, min(15, child_chromosome[last_gene][0] - last_r))
+            change = child_chromosome[last_gene][0] - orig
+            score -= abs(change) * 25
+            children[score] = {'chromosome': child_chromosome, 'path_x': path_x, 'path_y': path_y}
 
-            population.update(children)
+        population.update(children)
 
-            # Now select the fittest
-            population = dict(sorted(population.items()))
-            scores = list(population.keys())
-            for i in range(len(scores) - 1, POPULATION_SIZE, -1):
-                del population[scores[i]]
-            found_solution = scores[0] == 0
+        # Now select the fittest
+        population = dict(sorted(population.items()))
+        scores = list(population.keys())
+        for i in range(len(scores) - 1, POPULATION_SIZE, -1):
+            del population[scores[i]]
+        found_solution = scores[0] == 0
 
-            # Output data
-            print(scores)
-            #plot(population, land_x, land_y, 0.5)
+        # Output data
+        print(scores)
+        # plot(population, land_x, land_y, 0.5)
     plot(population, land_x, land_y, 20)
