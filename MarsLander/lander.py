@@ -7,6 +7,14 @@ from random import randint, random, sample
 GRAVITY = -3.711
 CHROMOSOME_LENGTH = 80
 POPULATION_SIZE = 40
+PARENT_FRACTION = 0.5
+ELITISM_SIZE = 5
+MAX_SCORE = 50000
+MUTATION_RATE = 0
+MUTATION_INCREMENT = 0.01
+MAX_MUTATION = 0.1
+LAST_BEST_SCORE = MAX_SCORE
+
 SIN_R = []
 COS_R = []
 
@@ -19,7 +27,7 @@ class State(Enum):
 
 def get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y):
     points = max(0.8 * landing_min + 0.2 * landing_max - x, 0) + max(x - 0.8 * landing_max - 0.2 * landing_min, 0) + max(y - landing_y, 0)
-    points += max(abs(hs) - 20, 0) * 50
+    points += max(abs(hs) - 20, 0) * 25
     points += max(abs(vs) - 40, 0) * 25
     points += abs(r) * 25
     #if points < 5000:
@@ -43,7 +51,7 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
     path_x = [x]
     path_y = [y]
     state = State.Flying
-    score = 50000
+    score = MAX_SCORE
     index = 0
     while state == State.Flying and index < CHROMOSOME_LENGTH:
         ha = -p * SIN_R[r + 90]
@@ -66,6 +74,14 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
 
 
 def plot(population, land_x, land_y, pause_time):
+    #fig, ax = plt.figure()
+    #fig = plt.get_previous_run_figure()
+    #ax = fig.axes
+
+    #noise = np.random.rand(1, 100)
+    #ax.plot(noise)
+    #plt.draw()
+
     plt.figure(figsize=(11.5, 4.5))
     ax = plt.gca()
     ax.set_facecolor('black')
@@ -82,6 +98,7 @@ def plot(population, land_x, land_y, pause_time):
 
 def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, land_x, land_y):
     # Pre-calculate sin and cos values
+    global LAST_BEST_SCORE, MUTATION_RATE, population
     for r in range(-90, 91):
         r_radians = math.radians(r)
         SIN_R.append(math.sin(r_radians))
@@ -103,18 +120,31 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
         else:
             # Perform generic algorithm. First select the fittest
             sorted_population = sorted(population.items(), key=lambda x: x[1]['score'])
-            number_to_keep = POPULATION_SIZE // 2
-            removed_ids = [i[0] for i in sorted_population[number_to_keep:]]
+            number_to_remove = 0
+            for value in sorted_population:
+                number_to_remove += 1 if value[1]['score'] == MAX_SCORE else 0
+            #number_to_remove = max(number_to_remove, PARENT_FRACTION * POPULATION_SIZE)
+            number_to_breed = POPULATION_SIZE - number_to_remove
+            #number_to_keep = int(POPULATION_SIZE * PARENT_PERCENT)
+            #removed_ids = [i[0] for i in sorted_population[ELITISM_SIZE:]]
 
             # Now breed more organisms
+            best_score = sorted_population[0][1]['score']
+            if best_score < LAST_BEST_SCORE:
+                LAST_BEST_SCORE = best_score
+                MUTATION_RATE = MUTATION_INCREMENT
+            else:
+                MUTATION_RATE = min(MAX_MUTATION, MUTATION_RATE + MUTATION_INCREMENT)
+
             children = {}
             parent_index = 0
-            for i in range(len(removed_ids)):
+            for replace_idx in range(POPULATION_SIZE - 1, ELITISM_SIZE - 1, -1):
                 #parent1 = sorted_population[parent_index][1]
                 #parent_index = (parent_index + 1) % number_to_keep
                 #parent2 = sorted_population[parent_index][1]
                 #parent_index = (parent_index + 1) % number_to_keep
-                parent1, parent2 = [i[1] for i in sample(sorted_population[:number_to_keep], 2)]
+                #print(replace_idx)
+                parent1, parent2 = [i[1] for i in sample(sorted_population[:min(number_to_breed, replace_idx)], 2)]
                 child_chromosome = []
                 factor = random()
                 cut_chromosome = randint(0, CHROMOSOME_LENGTH)
@@ -122,11 +152,12 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
                     child_chromosome.append([round(parent1['chromosome'][j][m] * factor + parent2['chromosome'][j][m] * (1 - factor)) for m in range(2)])
                     if j == cut_chromosome:
                         factor = 1 - factor
-                    mutation_rate = 0.2 if parent1['score'] == parent2['score'] else 0.1
+                    #mutation_rate = 0.05 if parent1['score'] == parent2['score'] else 0.02
                     # mutation_rate = 0.01
-                    if random() < mutation_rate:
+                    #mutation_rate = 0
+                    if random() < MUTATION_RATE:
                         child_chromosome[-1] = [randint(-15, 15), randint(-1, 1)]
-                children[removed_ids[i]] = {'chromosome': child_chromosome, 'calculated': False}
+                children[sorted_population[replace_idx][0]] = {'chromosome': child_chromosome, 'calculated': False}
             population.update(children)
 
         scores = []
