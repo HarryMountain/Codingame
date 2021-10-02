@@ -5,13 +5,13 @@ import numpy as np
 from random import randint, random, sample
 
 GRAVITY = -3.711
-CHROMOSOME_LENGTH = 80
+CHROMOSOME_LENGTH = 120
 POPULATION_SIZE = 40
 PARENT_FRACTION = 0.5
-ELITISM_SIZE = 5
+ELITISM_SIZE = 2
 MAX_SCORE = 50000
 MUTATION_RATE = 0
-MUTATION_INCREMENT = 0.01
+MUTATION_INCREMENT = 0.02
 MAX_MUTATION = 0.1
 LAST_BEST_SCORE = MAX_SCORE
 
@@ -144,7 +144,7 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
                 #parent2 = sorted_population[parent_index][1]
                 #parent_index = (parent_index + 1) % number_to_keep
                 #print(replace_idx)
-                parent1, parent2 = [i[1] for i in sample(sorted_population[:min(number_to_breed, replace_idx)], 2)]
+                parent1, parent2 = [i[1] for i in sample(sorted_population[:min(number_to_breed, 2 + replace_idx // 2)], 2)]
                 child_chromosome = []
                 factor = random()
                 cut_chromosome = randint(0, CHROMOSOME_LENGTH)
@@ -157,7 +157,11 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
                     #mutation_rate = 0
                     if random() < MUTATION_RATE:
                         child_chromosome[-1] = [randint(-15, 15), randint(-1, 1)]
-                children[sorted_population[replace_idx][0]] = {'chromosome': child_chromosome, 'calculated': False}
+
+                #organism = {'chromosome': child_chromosome, 'calculated': False}
+                score = evaluate_path(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init, child_chromosome, landing_area_min, landing_area_max, landing_area_y)[3]
+                if score < population[sorted_population[replace_idx][0]]['score']:
+                    children[sorted_population[replace_idx][0]] = {'chromosome': child_chromosome, 'calculated': False, 'score': score}
             population.update(children)
 
         scores = []
@@ -175,4 +179,5 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
         found_solution = scores[0] == 0
         print(scores)
         #plot(population, land_x, land_y, 0.5)
-    #plot(population, land_x, land_y, 20)
+    print(last_gene)
+    plot(population, land_x, land_y, 20)
