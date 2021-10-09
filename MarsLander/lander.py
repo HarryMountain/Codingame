@@ -8,7 +8,6 @@ GRAVITY = -3.711
 CHROMOSOME_LENGTH = 100
 POPULATION_SIZE = 40
 PARENT_FRACTION = 0.5
-MAX_SCORE = 50000
 MUTATION_INCREMENT = 0.02
 MAX_MUTATION = 0.1
 
@@ -38,7 +37,6 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
     path_x = [x]
     path_y = [y]
     state = State.Flying
-    score = MAX_SCORE
     index = 0
     while state == State.Flying and index < CHROMOSOME_LENGTH:
         r = max(-90, min(90, r + chromosome[index][0]))
@@ -53,7 +51,7 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
         hs += ha
         vs += va
         land_height = np.interp(x, land_x, land_y, left=None, right=None, period=None)
-        if y <= land_height or fuel <= 0:
+        if y <= land_height or fuel <= 0 or index == CHROMOSOME_LENGTH - 1:
             score = get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y, debug_on)
             state = State.Landed if score == 0 else State.Crashed
 
@@ -67,20 +65,31 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
 def create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y, fuel_init,
                              landing_area_min, landing_area_max, landing_area_y):
     random_population = {}
-    for i in range(POPULATION_SIZE):
+    for i in range(POPULATION_SIZE * 10):
         chromosome = []
         r_base = randint(-90, 90)
         p_base = randint(0, 4)
         r_act = 0
         p_act = 0
+        dr = randint(-15, 15)
+        dp = randint(-1, 1)
+        r = r_base
+        p = p_base
         for j in range(CHROMOSOME_LENGTH):
-            r_base += randint(-30, 30)
+            if j % 10 == 0:
+                dr = randint(-15, 15)
+                dp = randint(-1, 1)
+            #r += dr
+            #p += dp
+            """
+            r_base += randint(-30, 10) if j % 2 == 0 else randint(-10, 30)
             dr = min(15, max(-15, r_base - r_act))
             r_act += dr
-            #p_base += randint(-2, 2) if j < CHROMOSOME_LENGTH // 2 else randint(0, 2)
-            p_base += randint(-2, 2)
+            p_base += randint(-2, 0) if j % 2 == 0 else randint(0, 2)
             dp = min(1, max(-1, p_base - p_act))
             p_act += dp
+            """
+
             chromosome.append([dr, dp])
         score, state, fuel_left, last_gene, last_r, last_vs, path_x, path_y = evaluate_path(x_init, y_init, hs_init, vs_init,
                                                                                    r_init, p_init, land_x, land_y,
@@ -134,8 +143,9 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
 
     population = create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y,
                                           fuel_init, landing_area_min, landing_area_max, landing_area_y)
+    #plot(population, land_x, land_y, 20)
     found_solution = False
-    last_best_score = MAX_SCORE
+    last_best_score = 100000
     mutation_rate = MUTATION_INCREMENT
     while not found_solution:
         # Perform generic algorithm. First breed more organisms
@@ -213,14 +223,15 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
         found_solution = scores[0] == 0
 
         # Output data
-        #print(scores)
+        print(scores)
         #plot(population, land_x, land_y, 0.5)
-        #evaluate_path(x_init, y_init, hs_init,
-        #              vs_init, r_init, p_init,
-        #              land_x, land_y, fuel_init,
-        #              population[scores[0]]['chromosome'],
-        #              landing_area_min,
-        #              landing_area_max,
-        #              landing_area_y, True)
+        if False:
+            evaluate_path(x_init, y_init, hs_init,
+                          vs_init, r_init, p_init,
+                          land_x, land_y, fuel_init,
+                          population[scores[0]]['chromosome'],
+                          landing_area_min,
+                          landing_area_max,
+                          landing_area_y, True)
     #print(last_gene)
     #plot(population, land_x, land_y, 20)
