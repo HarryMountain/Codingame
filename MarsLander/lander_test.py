@@ -34,7 +34,7 @@ class Test(TestCase):
         solve_lander(*TEST_CASES[5])
 
     def test_cave_wrong_side(self):
-        solve_lander(*TEST_CASES[5])
+        solve_lander(*TEST_CASES[6])
 
     def test_all_landers(self):
         for i in range(len(TEST_CASES)):

@@ -1,7 +1,6 @@
 import math
 import matplotlib.pyplot as plt
 from enum import Enum
-import numpy as np
 from random import randint, random, sample
 
 GRAVITY = -3.711
@@ -33,6 +32,18 @@ def get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y, debug_on):
     return round(points)
 
 
+def hit_land(old_x, old_y, new_x, new_y, land_x, land_y):
+    grad_path = 1e9 if new_x == old_x else (new_y - old_y) / (new_x - old_x)
+    intercept_path = new_y - grad_path * new_x
+    for i in range(len(land_x) - 1):
+        grad_line = (land_y[i + 1] - land_y[i]) / (land_x[i + 1] - land_x[i])
+        intercept_line = land_y[i] - grad_line * land_x[i]
+        cross_x = (intercept_line - intercept_path) / (grad_path - grad_line)
+        if max(min(old_x, new_x), min(land_x[i], land_x[i + 1])) < cross_x < min(max(old_x, new_x), max(land_x[i], land_x[i + 1])):
+            return True
+    return False
+
+
 def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_min, landing_max, landing_y, debug_on):
     path_x = [x]
     path_y = [y]
@@ -47,12 +58,16 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
         #r_radians = math.radians(r)
         #ha = -p * math.sin(r_radians)
         #va = p * math.cos(r_radians) + GRAVITY
+        old_x = x
+        old_y = y
         x += hs + ha / 2
         y += vs + va / 2
         hs += ha
         vs += va
-        land_height = np.interp(x, land_x, land_y, left=None, right=None, period=None)
-        if y <= land_height or fuel <= 0 or index == CHROMOSOME_LENGTH - 1:
+        #land_height = np.interp(x, land_x, land_y, left=None, right=None, period=None)
+        hit_the_land = hit_land(old_x, old_y, x, y, land_x, land_y)
+        #if y <= land_height or fuel <= 0 or index == CHROMOSOME_LENGTH - 1:
+        if hit_the_land or fuel <= 0 or index == CHROMOSOME_LENGTH - 1:
             score = get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y, debug_on)
             state = State.Landed if score == 0 else State.Crashed
 
@@ -200,8 +215,8 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
         found_solution = scores[0] == 0
 
         # Output data
-        #print(scores)
-        #plot(population, land_x, land_y, 0.5)
+        print(scores)
+        plot(population, land_x, land_y, 0.5)
         if False:
             evaluate_path(x_init, y_init, hs_init,
                           vs_init, r_init, p_init,
