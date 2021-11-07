@@ -4,6 +4,7 @@ COMMANDS = ['SPEED', 'SLOW', 'JUMP', 'WAIT', 'UP', 'DOWN']
 
 #def get_score():
 
+
 def evaluate_bike(bike_count, bike_required, grid, speed_init, bike_data, chromosome):
     finished = False
     index = 0
