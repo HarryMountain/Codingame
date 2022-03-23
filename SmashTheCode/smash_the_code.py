@@ -4,6 +4,9 @@ from copy import deepcopy
 
 import numpy as np
 
+SCORE_THRESHOLD_MULTIPLIER = 4
+HEIGHT_PENALTY = 100
+
 grid = np.zeros((6, 12), dtype=int)
 
 
@@ -12,9 +15,12 @@ def find_blocks(grid):
     number_sorted = 0
     visited = []
     number_of_cells = (grid > 0).sum()
+    if number_of_cells == 0:
+        return blocks
     for x in range(len(grid)):
         for y in range(len(grid[x])):
-            if grid[x, y] != 0 and [x, y] not in visited:
+            # TODO : think this is wrong - it will pick up skulls as a block. Change != 0 to > 0 ???
+            if grid[x, y] > 0 and [x, y] not in visited:
                 colour = grid[x, y]
                 connected = [[x, y]]
                 changed = True
@@ -35,9 +41,7 @@ def find_blocks(grid):
                 visited.extend(connected)
                 if len(visited) == number_of_cells:
                     return blocks
-
-
-
+    return blocks
 
 
 def place_block(block, rotation, grid, col):
@@ -67,6 +71,11 @@ def merge(grid, cp):
             gb += 8 if len(block) >= 11 else len(block) - 4
             for point in block:
                 grid[point[0], point[1]] = 0
+                for move in [[1, 0], [0, 1], [-1, 0], [0, -1]]:
+                    new_point = [point[0] + move[0], point[1] + move[1]]
+                    if -1 < new_point[0] < 6 and -1 < new_point[1] < 12:
+                        if grid[new_point[0], new_point[1]] == -1:
+                            grid[point[0], point[1]] = 0
     for x in range(len(grid)):
         lowest_free = -1
         for y in range(len(grid[x])):
@@ -74,12 +83,13 @@ def merge(grid, cp):
                 if grid[x, y] != 0:
                     grid[x, lowest_free] = grid[x, y]
                     grid[x, y] = 0
+                    lowest_free += 1
             else:
                 if grid[x, y] == 0:
                     lowest_free = y
     # score calculation
     cb = 0 if len(colours) == 1 else 2**(len(colours) - 1)
-    score = (10 * b) * min((cp + cb + gb), 999)
+    score = (10 * b) * max(1, min(999, (cp + cb + gb)))
     return score
 
 def turn(grid, block, rotation, col):
@@ -96,6 +106,7 @@ def turn(grid, block, rotation, col):
 
 # game loop
 while True:
+    print(grid, file=sys.stderr, flush=True)
     blocks = []
     grid = np.zeros((6, 12), dtype=int)
     for i in range(8):
@@ -119,31 +130,50 @@ while True:
     print(grid, file=sys.stderr, flush=True)
 
     # Maximize score
-    action = []
-    max_score = -1
+    score_threshold = SCORE_THRESHOLD_MULTIPLIER * (grid == 0).sum()
+    print(str(score_threshold), file=sys.stderr, flush=True)
+    actions = {}
     for col in range(6):
         for rotation in range(4):
             if not ((col == 0 and rotation == 2) or (col == 5 and rotation == 0)):
-                score = turn(deepcopy(grid), blocks[0], rotation, col)
-                print(str(col) + ' ' + str(rotation) + ' ' + str(score), file=sys.stderr, flush=True)
-                if score > max_score:
-                    max_score = score
-                    action = [col, rotation]
+                second_col = col + 1 if rotation == 0 else (col - 1 if rotation == 2 else col)
+                # Don't go off the top of the grid
+                if grid[col, 9] == 0 and grid[second_col, 9] == 0:
+                    score = turn(deepcopy(grid), blocks[0], rotation, col)
+                    print(str(col) + ' ' + str(rotation) + ' ' + str(score), file=sys.stderr, flush=True)
+                    actions[score] = [col, rotation]
 
-
-    print(action, file=sys.stderr, flush=True)
+    #print(actions, file=sys.stderr, flush=True)
+    scores = sorted(actions.keys())
+    #print(scores, file=sys.stderr, flush=True)
+    if scores[-1] > score_threshold:
+        action = actions[scores[-1]]
+    else:
+        action = actions[scores[0]]
+    #print(action, file=sys.stderr, flush=True)
     # "x": the column in which to drop your blocks
     print(' '.join([str(x) for x in action]))
 
 
-"""
-place_block([3, 2], 0, grid, 3)
-place_block([3, 2], 0, grid, 4)
-place_block([3, 3], 0, grid, 3)
-place_block([4, 4], 0, grid, 3)
+'''
+turn(grid, [3, 3], 0, 0)
+turn(grid, [2, 2], 0, 0)
+turn(grid, [1, 1], 0, 0)
+print(grid)
+new_block = [3, 3]
+max_score = -1
+for col in range(6):
+    for rotation in range(4):
+        if not ((col == 0 and rotation == 2) or (col == 5 and rotation == 0)):
+            score = turn(deepcopy(grid), new_block, rotation, col)
+            print(str(col) + ' ' + str(rotation) + ' ' + str(score))
+            if score > max_score:
+                max_score = score
+                action = [col, rotation]
+
 print(grid)
 #print(find_blocks(grid))
 merge(grid)
 refill(grid)
 print(grid)
-"""
+'''
