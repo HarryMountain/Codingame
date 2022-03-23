@@ -1,11 +1,11 @@
 import sys
 import math
 from copy import deepcopy
-
+from random import shuffle
 import numpy as np
 
 SCORE_THRESHOLD_MULTIPLIER = 4
-HEIGHT_PENALTY = 100
+FILL_BONUS = 2
 
 grid = np.zeros((6, 12), dtype=int)
 
@@ -133,13 +133,19 @@ while True:
     score_threshold = SCORE_THRESHOLD_MULTIPLIER * (grid == 0).sum()
     print(str(score_threshold), file=sys.stderr, flush=True)
     actions = {}
-    for col in range(6):
-        for rotation in range(4):
+    col_list = list(range(6))
+    shuffle(col_list)
+    rot_list = list(range(4))
+    shuffle(rot_list)
+    for col in col_list:
+        for rotation in rot_list:
             if not ((col == 0 and rotation == 2) or (col == 5 and rotation == 0)):
                 second_col = col + 1 if rotation == 0 else (col - 1 if rotation == 2 else col)
                 # Don't go off the top of the grid
                 if grid[col, 9] == 0 and grid[second_col, 9] == 0:
-                    score = turn(deepcopy(grid), blocks[0], rotation, col)
+                    temp_grid = deepcopy(grid)
+                    score = turn(temp_grid, blocks[0], rotation, col)
+                    score += (temp_grid == 0).sum() * FILL_BONUS
                     print(str(col) + ' ' + str(rotation) + ' ' + str(score), file=sys.stderr, flush=True)
                     actions[score] = [col, rotation]
 
