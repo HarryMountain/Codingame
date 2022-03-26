@@ -6,21 +6,48 @@ import numpy as np
 
 SCORE_THRESHOLD_MULTIPLIER = 4
 FILL_BONUS = 2
+rotation_dict = {0: 1, 1: 0, 2: -1, 3: 0}
 
 grid = np.zeros((6, 12), dtype=int)
+visited = np.zeros((6, 12), dtype=int)
+# List of actions by [col, rotation]
+possible_things = [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [0, 3],
+    [0, 4],
+    [1, 0],
+    [1, 1],
+    [1, 2],
+    [1, 3],
+    [1, 4],
+    [1, 5],
+    [2, 1],
+    [2, 2],
+    [2, 3],
+    [2, 4],
+    [2, 5],
+    [3, 0],
+    [3, 1],
+    [3, 2],
+    [3, 3],
+    [3, 4],
+    [3, 5]
+]
 
 
 def find_blocks(grid):
+    global vis_grid
     blocks = []
     number_sorted = 0
-    visited = []
+    visited.fill(0)
     number_of_cells = (grid > 0).sum()
     if number_of_cells == 0:
         return blocks
     for x in range(len(grid)):
         for y in range(len(grid[x])):
-            # TODO : think this is wrong - it will pick up skulls as a block. Change != 0 to > 0 ???
-            if grid[x, y] > 0 and [x, y] not in visited:
+            if grid[x, y] > 0 and visited[x, y] == 0:
                 colour = grid[x, y]
                 connected = [[x, y]]
                 changed = True
@@ -30,16 +57,18 @@ def find_blocks(grid):
                     new_points_to_search = []
                     for element in points_to_search:
                         for move in [[1, 0], [0, 1], [-1, 0], [0, -1]]:
-                            new_point = [element[0] + move[0], element[1] + move[1]]
-                            if -1 < new_point[0] < 6 and -1 < new_point[1] < 12 and new_point not in visited and new_point not in connected:
-                                if grid[new_point[0], new_point[1]] == colour:
+                            new_point_x = element[0] + move[0]
+                            new_point_y = element[1] + move[1]
+                            new_point = [new_point_x, new_point_y]
+                            if -1 < new_point_x < 6 and -1 < new_point_y < 12 and visited[new_point_x, new_point_y] == 0 and new_point not in connected:
+                                if grid[new_point_x, new_point_y] == colour:
                                     connected.append(new_point)
+                                    visited[new_point_x, new_point_y] = 1
                                     new_points_to_search.append(new_point)
                     changed = len(connected) > number_in_block
                     points_to_search = new_points_to_search
                 blocks.append(connected)
-                visited.extend(connected)
-                if len(visited) == number_of_cells:
+                if visited.sum() == number_of_cells:
                     return blocks
     return blocks
 
@@ -57,6 +86,7 @@ def place_block(block, rotation, grid, col):
             if grid[col, i] == 0:
                 grid[col, i] = colour
                 break
+
 
 def merge(grid, cp):
     b = 0
@@ -91,6 +121,7 @@ def merge(grid, cp):
     cb = 0 if len(colours) == 1 else 2**(len(colours) - 1)
     score = (10 * b) * max(1, min(999, (cp + cb + gb)))
     return score
+
 
 def turn(grid, block, rotation, col):
     place_block(block, rotation, grid, col)
@@ -127,26 +158,29 @@ while True:
         row = input()
 
     # Write an action using print
-    print(grid, file=sys.stderr, flush=True)
+    # print(grid, file=sys.stderr, flush=True)
 
     # Maximize score
     score_threshold = SCORE_THRESHOLD_MULTIPLIER * (grid == 0).sum()
-    print(str(score_threshold), file=sys.stderr, flush=True)
+    # print(str(score_threshold), file=sys.stderr, flush=True)
     actions = {}
     col_list = list(range(6))
     shuffle(col_list)
     rot_list = list(range(4))
     shuffle(rot_list)
-    for col in col_list:
-        for rotation in rot_list:
-            if not ((col == 0 and rotation == 2) or (col == 5 and rotation == 0)):
-                second_col = col + 1 if rotation == 0 else (col - 1 if rotation == 2 else col)
-                # Don't go off the top of the grid
-                if grid[col, 9] == 0 and grid[second_col, 9] == 0:
-                    temp_grid = deepcopy(grid)
-                    score = turn(temp_grid, blocks[0], rotation, col)
+    for rotation, col in (possible_things if blocks[0][0] != blocks[0][1] else possible_things[:11]):
+        second_col = col + rotation_dict[rotation]
+        for rotation2, col2 in (possible_things if blocks[1][0] != blocks[1][1] else possible_things[:11]):
+            # second_col = col + 1 if rotation == 0 else (col - 1 if rotation == 2 else col)
+            second_col2 = col2 + rotation_dict[rotation2]
+            # Don't go off the top of the grid
+            if grid[col, 9] == 0 and grid[second_col, 9] == 0:
+                temp_grid = deepcopy(grid)
+                score = turn(temp_grid, blocks[0], rotation, col)
+                if temp_grid[col2, 9] == 0 and temp_grid[second_col2, 9] == 0:
+                    score += turn(temp_grid, blocks[1], rotation2, col2)
                     score += (temp_grid == 0).sum() * FILL_BONUS
-                    print(str(col) + ' ' + str(rotation) + ' ' + str(score), file=sys.stderr, flush=True)
+                    # print(str(col) + ' ' + str(rotation) + ' ' + str(col2) + ' ' + str(rotation2) + ' ' + str(score), file=sys.stderr, flush=True)
                     actions[score] = [col, rotation]
 
     #print(actions, file=sys.stderr, flush=True)
