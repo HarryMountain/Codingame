@@ -74,18 +74,14 @@ def find_blocks(grid):
 
 
 def place_block(block, rotation, grid, col):
-    block_place = []
+    row = 11 - (grid[col,:] == 0).sum()
     if rotation == 3:
-        block_place.append([block[1], col])
-        block_place.append([block[0], col])
+        grid[col, row] = block[1]
+        grid[col, row + 1] = block[0]
     else:
-        block_place.append([block[0], col])
-        block_place.append([block[1], col + 1 - rotation])
-    for colour, col in block_place:
-        for i in range(len(grid[col])):
-            if grid[col, i] == 0:
-                grid[col, i] = colour
-                break
+        grid[col, row] = block[0]
+        col += 1 - rotation
+        grid[col, 11 - (grid[col,:] == 0).sum()] = block[1]
 
 
 def merge(grid, cp):
@@ -164,10 +160,6 @@ while True:
     score_threshold = SCORE_THRESHOLD_MULTIPLIER * (grid == 0).sum()
     # print(str(score_threshold), file=sys.stderr, flush=True)
     actions = {}
-    col_list = list(range(6))
-    shuffle(col_list)
-    rot_list = list(range(4))
-    shuffle(rot_list)
     for rotation, col in (possible_things if blocks[0][0] != blocks[0][1] else possible_things[:11]):
         second_col = col + rotation_dict[rotation]
         for rotation2, col2 in (possible_things if blocks[1][0] != blocks[1][1] else possible_things[:11]):
