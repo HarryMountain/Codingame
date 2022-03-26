@@ -3,7 +3,7 @@ import math
 from copy import deepcopy
 import numpy as np
 
-SCORE_THRESHOLD_MULTIPLIER = 2
+SCORE_THRESHOLD_MULTIPLIER = 4
 FILL_BONUS = 2
 ROTATION_DICT = {0: 1, 1: 0, 2: -1, 3: 0}
 ONE_CELL_MOVES = [[1, 0], [0, 1], [-1, 0], [0, -1]]
@@ -60,9 +60,8 @@ def merge(grid, cp):
     three_blocks = 0
     visited.fill(0)
     for x in range(GRID_WIDTH):
-        for y in range(GRID_HEIGHT):
-            # if grid[x, y] > 0 and visited[x, y] == 0 and grid[x, y] != prev_grid[x, y]:
-            if grid[x, y] > 0 and visited[x, y] == 0:
+        for y in range(heights[x]):
+            if visited[x, y] == 0:
                 colour = grid[x, y]
                 connected = [[x, y]]
                 changed = True
@@ -75,7 +74,7 @@ def merge(grid, cp):
                         for move in ONE_CELL_MOVES:
                             new_point_x = element[0] + move[0]
                             new_point_y = element[1] + move[1]
-                            if -1 < new_point_x < 6 and -1 < new_point_y < 12:
+                            if -1 < new_point_x < 6 and -1 < new_point_y < heights[new_point_x]:
                                 this_colour = grid[new_point_x, new_point_y]
                                 if this_colour == 0:
                                     is_external = True
@@ -173,8 +172,12 @@ while True:
     # Maximize score
     score_threshold = SCORE_THRESHOLD_MULTIPLIER * (grid == 0).sum()
     # print(str(score_threshold), file=sys.stderr, flush=True)
-    merge_actions = {}
-    other_actions = {}
+    #merge_actions = {}
+    #other_actions = {}
+    best_merge_action = None
+    best_merge_score = -9999999
+    best_other_action = None
+    best_other_score = -9999999
     for rotation, col in (possible_things if blocks[0][0] != blocks[0][1] else possible_things[:11]):
         second_col = col + ROTATION_DICT[rotation]
         # Don't go off the top of the grid
@@ -193,20 +196,27 @@ while True:
                     # print(str(col) + ' ' + str(rotation) + ' ' + str(col2) + ' ' + str(rotation2) + ' ' + str(score), file=sys.stderr, flush=True)
                     # heights = [(x != 0).sum() for x in temp_grid2]
                     # score2 -= (max(heights) - min(heights)) * 10
-                    if cp2 > 0:
-                        merge_actions[score2] = [col, rotation]
-                    else:
-                        other_actions[score2] = [col, rotation]
+                    if cp2 > 0 and score2 > best_merge_score:
+                        best_merge_action = [col, rotation, col2, rotation2]
+                        best_merge_score = score2
+                        #merge_actions[score2] = [col, rotation, col2, rotation2]
+                    elif score2 > best_other_score:
+                        best_other_action = [col, rotation, col2, rotation2]
+                        best_other_score = score2
+                        #other_actions[score2] = [col, rotation, col2, rotation2]
 
-    print(merge_actions, file=sys.stderr, flush=True)
-    print(other_actions, file=sys.stderr, flush=True)
+    #print(merge_actions, file=sys.stderr, flush=True)
+    #print(other_actions, file=sys.stderr, flush=True)
 
+    '''
     action = None
     if len(merge_actions) > 0:
         best_merge = max(merge_actions.keys())
         if best_merge > score_threshold:
             action = merge_actions[best_merge]
-    if action is None:
+    if action is None or max(other_actions.keys()) > max(merge_actions.keys()):
         action = other_actions[max(other_actions.keys())]
+    '''
+    action = best_merge_action if best_merge_score > best_other_score else best_other_action
     # "x": the column in which to drop your blocks
-    print(' '.join([str(x) for x in action]))
+    print(' '.join([str(x) for x in action[:2]]))
