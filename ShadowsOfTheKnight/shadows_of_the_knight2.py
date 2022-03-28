@@ -1,6 +1,8 @@
 import sys
 import math
 
+FRACTION_FROM_EDGE = 1/3
+
 # Auto-generated code below aims at helping you parse
 # the standard input according to the problem statement.
 
@@ -53,21 +55,33 @@ while True:
     old_y = y
     if box_x[0] != box_x[1]:
         x = sum(box_x) - old_x
+        if not (0 <= x < w):
+            x = int(box_x[0] * (1 - FRACTION_FROM_EDGE) + box_x[1] * FRACTION_FROM_EDGE) if x < 0 else\
+                int(box_x[0] * FRACTION_FROM_EDGE + box_x[1] * (1 - FRACTION_FROM_EDGE))
+        #if x == old_x:
         if (abs(x - old_x) > 2 and abs(x - old_x) % 2 == 1) or x == old_x:
-            x += -1 if x > 0 else 1
-        x = max(0, min(w - 1, x))
+            x += 1 if x < w // 2 else -1
+        #if (abs(x - old_x) > 2 and abs(x - old_x) % 2 == 1) or x == old_x:
+        #    x += -1 if x > 0 else 1
+        #x = max(0, min(w - 1, x))
         last_move = 'horizontal'
     else:
-        changed = x != box_x[0] # todo : should this be above and x != old_x?
+        changed = x != box_x[0]
         x = box_x[0]
         if not changed:
             if box_y[0] == box_y[1]:
                 y = box_y[0]
             else:
                 y = sum(box_y) - old_y
+                if not (0 <= y < h):
+                    y = int(box_y[0] * (1 - FRACTION_FROM_EDGE) + box_y[1] * FRACTION_FROM_EDGE) if y < 0 else\
+                        int(box_y[0] * FRACTION_FROM_EDGE + box_y[1] * (1 - FRACTION_FROM_EDGE))
+                #if y == old_y:
                 if (abs(y - old_y) > 2 and abs(y - old_y) % 2 == 1) or y == old_y:
-                    y += -1 if y > 0 else 1
-                y = max(0, min(h - 1, y))
+                    y += 1 if y < h // 2 else -1
+                #if (abs(y - old_y) > 2 and abs(y - old_y) % 2 == 1) or y == old_y:
+                #    y += -1 if y > 0 else 1
+                #y = max(0, min(h - 1, y))
                 last_move = 'vertical'
 
     print(*[x, y])
