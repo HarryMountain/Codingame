@@ -1,7 +1,7 @@
 import sys
 import math
 
-FRACTION_FROM_EDGE = 1/3
+FRACTION_FROM_EDGE = 2/3
 
 # Auto-generated code below aims at helping you parse
 # the standard input according to the problem statement.
@@ -22,15 +22,8 @@ def distance(x_dif, y_dif):
 
 last_move = None
 while True:
-    # TODO:
-    #  Art : I think the problem is this:
-    # When the range is near the centre it makers sense to try to cut out half the range each time
-    # As the range gets close to the side it's harder to clsoe the range on the edge of the range next to the
-    # edge of the grid
-    # So need to put the next point close to the edge than the middle of the range
-
-
     bomb_dir = input()
+
     # Process last move
     if last_move == 'horizontal':
         divide = (old_x + x) / 2
@@ -56,14 +49,13 @@ while True:
     if box_x[0] != box_x[1]:
         x = sum(box_x) - old_x
         if not (0 <= x < w):
-            x = int(box_x[0] * (1 - FRACTION_FROM_EDGE) + box_x[1] * FRACTION_FROM_EDGE) if x < 0 else\
-                int(box_x[0] * FRACTION_FROM_EDGE + box_x[1] * (1 - FRACTION_FROM_EDGE))
-        #if x == old_x:
+            a = box_x[0] / (w - (box_x[1] - box_x[0]))
+            fraction = FRACTION_FROM_EDGE + a * (1 - 2 * FRACTION_FROM_EDGE)
+            x = math.floor(box_x[0] * (1 - fraction) + box_x[1] * fraction) if x < 0 else \
+                math.ceil(box_x[0] * fraction + box_x[1] * (1 - fraction))
+
         if (abs(x - old_x) > 2 and abs(x - old_x) % 2 == 1) or x == old_x:
             x += 1 if x < w // 2 else -1
-        #if (abs(x - old_x) > 2 and abs(x - old_x) % 2 == 1) or x == old_x:
-        #    x += -1 if x > 0 else 1
-        #x = max(0, min(w - 1, x))
         last_move = 'horizontal'
     else:
         changed = x != box_x[0]
@@ -74,14 +66,12 @@ while True:
             else:
                 y = sum(box_y) - old_y
                 if not (0 <= y < h):
-                    y = int(box_y[0] * (1 - FRACTION_FROM_EDGE) + box_y[1] * FRACTION_FROM_EDGE) if y < 0 else\
-                        int(box_y[0] * FRACTION_FROM_EDGE + box_y[1] * (1 - FRACTION_FROM_EDGE))
-                #if y == old_y:
+                    a = box_y[0] / (h - (box_y[1] - box_y[0]))
+                    fraction = FRACTION_FROM_EDGE + a * (1 - 2 * FRACTION_FROM_EDGE)
+                    y = math.floor(box_y[0] * (1 - fraction) + box_y[1] * fraction) if y < 0 else \
+                        math.ceil(box_y[0] * fraction + box_y[1] * (1 - fraction))
                 if (abs(y - old_y) > 2 and abs(y - old_y) % 2 == 1) or y == old_y:
                     y += 1 if y < h // 2 else -1
-                #if (abs(y - old_y) > 2 and abs(y - old_y) % 2 == 1) or y == old_y:
-                #    y += -1 if y > 0 else 1
-                #y = max(0, min(h - 1, y))
                 last_move = 'vertical'
 
     print(*[x, y])
