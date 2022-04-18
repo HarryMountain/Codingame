@@ -21,9 +21,10 @@ no_to_destroy = np.count_nonzero(grid == -1)
 # game loop
 
 
-def explode_bomb(grid, x, y):
+def explode_bomb(grid, x, y, bla):
     grid[x, y] = 0
     destroyed = 0
+    nodes_destroyed = []
     for direction in directions:
         new_x = x
         new_y = y
@@ -33,11 +34,13 @@ def explode_bomb(grid, x, y):
             if not 0 <= new_x < width or not 0 <= new_y < height or grid[new_x, new_y] == -2:
                 break
             elif grid[new_x, new_y] > 0:
-                destroyed += explode_bomb(grid, new_x, new_y)
+                destroyed += explode_bomb(grid, new_x, new_y, False)
             elif grid[new_x, new_y] == -1:
                 grid[new_x, new_y] = 0
+                if bla:
+                    nodes_destroyed.append((new_x, new_y))
                 destroyed += 1
-    return destroyed
+    return destroyed if not bla else nodes_destroyed
 
 
 def do_turn(move, grid):
@@ -47,7 +50,7 @@ def do_turn(move, grid):
             if grid[x, y] > 1:
                 grid[x, y] = grid[x, y] - 1
             if grid[x, y] == 1:
-                no_destroyed += explode_bomb(grid, x, y)
+                no_destroyed += explode_bomb(grid, x, y, False)
     if move != 'WAIT':
         grid[move[0], move[1]] = 3
     return no_destroyed
@@ -55,16 +58,16 @@ def do_turn(move, grid):
 
 def solve_problem(rounds, bombs):
     actions = []
-    possible_locations = []
+    possible_locations = {}
     for x in range(len(grid)):
         for y in range(len(grid[x])):
             if grid[x, y] == 0:
                 new_grid = deepcopy(grid)
-                no_destroyed = explode_bomb(new_grid, x, y)
-                if no_destroyed > 0:
-                    possible_locations.append((x, y))
-
-    for bomb_config in permutations(possible_locations, bombs):
+                nodes_destroyed = explode_bomb(new_grid, x, y, True)
+                if len(nodes_destroyed) > 0:
+                    possible_locations[tuple(nodes_destroyed)] = (x, y)
+    print(len(possible_locations.values()), file=sys.stderr, flush=True)
+    for bomb_config in permutations(possible_locations.values(), bombs):
         # print(bomb_config, file=sys.stderr, flush=True)
         check_grid = deepcopy(grid)
         total_destroyed = 0
