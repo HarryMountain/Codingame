@@ -79,7 +79,7 @@ while True:
     n, p = [int(i) for i in input().split()]
     if not initialized:
         # todo : think this is wrong, we need to let other players go first in flood fill
-        player_order = list(range(p + 1, n + 1)) + list(range(1, p + 1))
+        player_order = list(range(p + 2, n + 1)) + list(range(1, p + 2))
         initialized = True
     # print(p, file=sys.stderr, flush=True)
     for i in range(1, n + 1):
