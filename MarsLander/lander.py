@@ -9,13 +9,15 @@ GRAVITY = -3.711
 CHROMOSOME_LENGTH = 200
 POPULATION_SIZE = 40
 PARENT_FRACTION = 0.5
-MUTATION_INCREMENT = 0.02
-MAX_MUTATION = 0.05
+MUTATION_INCREMENT = 0.005
+MAX_MUTATION = 0.02
 MAX_SCORE = 50000
 
 SIN_R = []
 COS_R = []
 
+MIN_LAND_X = []
+MAX_LAND_X = []
 
 class State(Enum):
     Flying = 1
@@ -35,11 +37,9 @@ def get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y, debug_on, la
             for i in range(len(land_x) - 1):
                 if land_x[i] <= x <= land_x[i + 1]:
                     actual_landing_segment = i
-    if actual_landing_segment is None:
-        kk = 0
-        kk += 1
     points += sum(land_segment_lengths[min(target_landing_segment, actual_landing_segment) + 1: max(target_landing_segment,
                                                                                                  actual_landing_segment) - 1])
+    points += round(max(0.9 * landing_min + 0.1 * landing_max - x, 0) + max(x - 0.9 * landing_max - 0.1 * landing_min, 0))
     points += round(max(0, abs(y - landing_y) - abs(vs) - 4))
     points += max(abs(round(hs)) - 20, 0) * 25
     points += max(abs(round(vs)) - 40, 0) * 25
@@ -53,11 +53,19 @@ def get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y, debug_on, la
 def hit_land(old_x, old_y, new_x, new_y, land_x, land_y):
     grad_path = 1e9 if new_x == old_x else (new_y - old_y) / (new_x - old_x)
     intercept_path = new_y - grad_path * new_x
+    min_x = min(old_x, new_x)
+    max_x = max(old_x, new_x)
     for i in range(len(land_x) - 1):
-        grad_line = (land_y[i + 1] - land_y[i]) / (land_x[i + 1] - land_x[i])
-        intercept_line = land_y[i] - grad_line * land_x[i]
+        land_x_low, land_x_high = land_x[i: i + 2]
+        land_y_low, land_y_high = land_y[i: i + 2]
+        if old_y > land_y_low and old_y > land_y_high and new_y > land_y_low and new_y > land_y_high:
+            continue
+        if max_x < MIN_LAND_X[i] or min_x > MAX_LAND_X[i]:
+            continue
+        grad_line = (land_y[i + 1] - land_y[i]) / (land_x_high - land_x_low)
+        intercept_line = land_y[i] - grad_line * land_x_low
         cross_x = (intercept_line - intercept_path) / (grad_path - grad_line)
-        if max(min(old_x, new_x), min(land_x[i], land_x[i + 1])) < cross_x < min(max(old_x, new_x), max(land_x[i], land_x[i + 1])):
+        if max(min_x, MIN_LAND_X[i]) < cross_x < min(max_x, MAX_LAND_X[i]):
             return i
     return None
 
@@ -83,10 +91,10 @@ def evaluate_path(x, y, hs, vs, r, p, land_x, land_y, fuel, chromosome, landing_
         hs += ha
         vs += va
         landing_segment = hit_land(old_x, old_y, x, y, land_x, land_y)
-        if x < 0 or x > X_MAX or y < 0 or y > Y_MAX:
-            score = MAX_SCORE
-            state = State.Crashed
-        elif landing_segment is not None or fuel <= 0 or index == CHROMOSOME_LENGTH - 1:
+        #if x < 0 or x > X_MAX or y < 0 or y > Y_MAX:
+        #    score = MAX_SCORE
+        #    state = State.Crashed
+        if landing_segment is not None or fuel <= 0 or index == CHROMOSOME_LENGTH - 1 or x < 0 or x > X_MAX or y < 0 or y > Y_MAX:
             score = get_score(x, y, hs, vs, r, landing_min, landing_max, landing_y, debug_on, land_segment_lengths, target_landing_segment, landing_segment, land_x)
             state = State.Landed if score == 0 else State.Crashed
 
@@ -101,13 +109,12 @@ def create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, l
                              landing_area_min, landing_area_max, landing_area_y, land_segment_lengths, target_landing_segment):
     random_population = {}
     landing_direction_left = (landing_area_min + landing_area_max) // 2 - x_init < 0
-    # print(landing_direction_left)
     angle_min = 0 if landing_direction_left else -30
     angle_max = 31 if landing_direction_left else 1
-    for power in range(2, 5):
+    for power in range(3, 5):
         for angle in range(angle_min, angle_max, 5):
             for power2 in range(2, 5):
-                for angle2 in range(-10, 11, 5):
+                for angle2 in range(-10, 11, 3):
                     chromosome = []
                     r = r_init
                     p = p_init
@@ -131,7 +138,7 @@ def create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, l
                                                                                                         land_segment_lengths,
                                                                                                         target_landing_segment,
                                                                                                         False)
-                random_population[score] = {'chromosome': chromosome, 'path_x': path_x, 'path_y': path_y}
+                    random_population[score] = {'chromosome': chromosome, 'path_x': path_x, 'path_y': path_y}
 
     return random_population
 
@@ -160,6 +167,17 @@ def plot(plot_population, land_x, land_y, pause_time):
 
 
 def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, land_x, land_y):
+    # Pre-calculate land data
+    for i in range(len(land_x) - 1):
+        MIN_LAND_X.append(min(land_x[i], land_x[i + 1]))
+        MAX_LAND_X.append(max(land_x[i], land_x[i + 1]))
+
+    global LAST_BEST_SCORE, MUTATION_RATE
+    for r in range(-90, 91):
+        r_radians = math.radians(r)
+        SIN_R.append(math.sin(r_radians))
+        COS_R.append(math.cos(r_radians))
+
     # Pre-calculate sin and cos values
     global LAST_BEST_SCORE, MUTATION_RATE
     for r in range(-90, 91):
@@ -183,7 +201,7 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
 
     population = create_random_population(x_init, y_init, hs_init, vs_init, r_init, p_init, land_x, land_y,
                                           fuel_init, landing_area_min, landing_area_max, landing_area_y, land_segment_lengths, target_landing_segment)
-    # plot(population, land_x, land_y, 20)
+    #plot(population, land_x, land_y, 20)
     found_solution = False
     last_best_score = 100000
     mutation_rate = MUTATION_INCREMENT
@@ -191,19 +209,26 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
         # Perform generic algorithm. First breed more organisms
         scores = list(population.keys())
         best_score = scores[0]
-        mutation_rate = max(MUTATION_INCREMENT, min(MAX_MUTATION,
-                                                    mutation_rate + (-MUTATION_INCREMENT if best_score < last_best_score else MUTATION_INCREMENT)))
+        #mutation_rate = max(MUTATION_INCREMENT, min(MAX_MUTATION,
+         #                                           mutation_rate + (-MUTATION_INCREMENT if best_score < last_best_score else MUTATION_INCREMENT)))
+        mutation_rate = MUTATION_INCREMENT if best_score < last_best_score else min(MAX_MUTATION, mutation_rate + MUTATION_INCREMENT)
         distance_to_solution = best_score / (scores[min(POPULATION_SIZE // 2, len(scores) - 1)] - best_score + 1)
-        mutation_rate = min(MAX_MUTATION, distance_to_solution / 20)
+        #mutation_rate = min(MAX_MUTATION, distance_to_solution / 20)
         # mutation_rate = MAX_MUTATION
         last_best_score = best_score
         #print(mutation_rate)
 
+        max_parent_index = 2
+        while scores[max_parent_index] < 2 * best_score and max_parent_index < len(scores) - 2:
+            max_parent_index += 1
         for child_idx in range(2, int(POPULATION_SIZE * PARENT_FRACTION)):
+            #parent1, parent2 = [population[i] for i in sample(scores[:max_parent_index], 2)]
             parent1, parent2 = [population[i] for i in sample(scores[:2 + child_idx // 2], 2)]
+            #parent1 = population[sample(scores[:5], 1)[0]]
+            #parent2 = population[sample(scores[:2 + child_idx // 2], 1)[0]]
             child_chromosome = []
             # factor = random()
-            # factor = 1.5 * random() - 0.25
+            #factor = 1.5 * random() - 0.25
             factor = 1.2 * random() - 0.1
             for j in range(CHROMOSOME_LENGTH):
                 mutation = [randint(-15, 15), randint(-1, 1)] if random() < mutation_rate else [0, 0]
@@ -239,7 +264,7 @@ def solve_lander(x_init, y_init, hs_init, vs_init, r_init, p_init, fuel_init, la
         found_solution = scores[0] == 0
 
         # Output data
-        # print(scores)
+        #print(scores)
         #plot(population, land_x, land_y, 0.5)
         if False:
             evaluate_path(x_init, y_init, hs_init,
