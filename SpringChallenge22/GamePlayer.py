@@ -55,7 +55,7 @@ while True:
         # near_base: 0=monster with no target yet, 1=monster targeting a base
         # threat_for: Given this monster's trajectory, is it a threat to 1=your base, 2=your opponent's base, 0=neither
         _id, _type, x, y, shield_life, is_controlled, health, vx, vy, near_base, threat_for = [int(j) for j in input().split()]
-        if _type == TYPE_MONSTER and threat_for < 2:
+        if _type == TYPE_MONSTER and threat_for == 1:
             monsters.append({'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health})
         elif _type == TYPE_MY_HERO:
             heroes.append({'pos': np.array((x, y))})
@@ -82,8 +82,8 @@ while True:
             if target is None:
                 action = 'MOVE'
                 target = monsters[i]['pos'] + monsters[i]['vel']
-                if get_distance(hero['pos'] - base['pos']) < 5000 * (i + 1):
-                    target = hero['pos'] + np.array([1000 * (x - 0.5) for x in np.random.random(2)])
+                # if get_distance(hero['pos'] - base['pos']) < 5000 * (i + 1):
+                #     target = hero['pos'] + np.array([1000 * (x - 0.5) for x in np.random.random(2)])
 
 
         # In the first league: MOVE <x> <y> | WAIT; In later leagues: | SPELL <spellParams>;
