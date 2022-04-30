@@ -26,21 +26,6 @@ for x in range(MAX_X):
 
 
 def flood_fill(grid, n, p, player_order):
-    '''
-    positions = [head]
-    positions_been_to = {head}
-    while len(positions) > 0:
-        new_positions = set()
-        for position in positions:
-            for move in moves.values():
-                new_position = (position[0] + move[0], position[1] + move[1])
-                if -1 < new_position[0] < MAX_X and -1 < new_position[1] < MAX_Y:
-                    if grid[new_position[0], new_position[1]] == 0 and new_position not in positions_been_to:
-                        new_positions.add(new_position)
-        positions = new_positions
-        positions_been_to.update(new_positions)
-    return len(positions_been_to)
-    '''
     done = False
     last_visited = {}
     for player in player_order:
@@ -56,17 +41,18 @@ def flood_fill(grid, n, p, player_order):
                         grid[neighbour[0], neighbour[1]] = player
                         new_visited.append(neighbour)
                         done = False
-                        if player == p + 1:
-                            index += 1
+            if player == p + 1 and len(new_visited) > 0:
+                index += 1
             last_visited[player] = new_visited
         # print(np.count_nonzero(grid  == 1), np.count_nonzero(grid  == 2), np.count_nonzero(grid  == 0), file=sys.stderr, flush=True)
-    print(grid, file=sys.stderr, flush=True)
+    # print(grid, file=sys.stderr, flush=True)
     score = 0
     no_my_cell = np.count_nonzero(grid == p + 1)
     score += no_my_cell
-    score += index * 10
+    score += index * 1
     # score -= 600 - no_my_cell - np.count_nonzero(grid == 0)
-    print(score, file=sys.stderr, flush=True)
+    # print(index, score, file=sys.stderr, flush=True)
+    # print(score, file=sys.stderr, flush=True)
     return score
 
 
@@ -78,7 +64,6 @@ while True:
     # p: your player number (0 to 3).
     n, p = [int(i) for i in input().split()]
     if not initialized:
-        # todo : think this is wrong, we need to let other players go first in flood fill
         player_order = list(range(p + 2, n + 1)) + list(range(1, p + 2))
         initialized = True
     # print(p, file=sys.stderr, flush=True)
@@ -100,20 +85,11 @@ while True:
             grid[x1, y1] = i
             grid[x0, y0] = i
 
-    #print(player_order, file=sys.stderr, flush=True)
+    # print(player_order, file=sys.stderr, flush=True)
 
     # print(grid, file=sys.stderr, flush=True)
     # print(player_head, file=sys.stderr, flush=True)
-    '''
-    directions_scores = {0: 'LEFT'}
-    for direction, move in moves.items():
-        new_position = (player_head[0] + move[0], player_head[1] + move[1])
-        if -1 < new_position[0] < MAX_X and -1 < new_position[1] < MAX_Y:
-            if grid[new_position[0], new_position[1]] == 0:
-                score = flood_fill(grid, new_position)
-                directions_scores[score] = direction
-    print(directions_scores[max(directions_scores.keys())])
-    '''
+
     my_head = snake_heads[p + 1]
     scores = {}
     # print(grid, file=sys.stderr, flush=True)
