@@ -129,21 +129,24 @@ while True:
     print(op_heroes, file=sys.stderr, flush=True)
 
     print(neutral_monsters, file=sys.stderr, flush=True)
-
+    has_winded = False
     for i in range(len(heroes)):
         hero = heroes[i]
         action = None
         target = None
         if i != 2:
-            if len(monsters) > 2:
-                if i == 0 and mana >= 20 and monsters[0]['dist'] < 800 and get_distance(monsters[0]['pos'] - hero['pos']) < 1280:
+            if len(monsters) > 0:
+                # print(monsters[0]['dist'], file=sys.stderr, flush=True)
+                # print(get_distance(monsters[0]['pos'] - hero['pos']), file=sys.stderr, flush=True)
+                if not has_winded and mana >= 10 and monsters[0]['dist'] < 800 and get_distance(monsters[0]['pos'] - hero['pos']) < 1280:
                     action = 'SPELL WIND'
                     # target = heroes[1]['pos'] - monsters[0]['pos']
                     target = enemy_base['pos']
+                    has_winded = True
             if target is None and len(monsters) > 0:
                 action = 'MOVE'
                 target_monster = min(i, len(monsters) - 1)
-                target = monsters[target_monster]['pos'] - 0 * monsters[target_monster]['vel'] # todo remove if target ahead of monster
+                target = monsters[target_monster]['pos'] - 0 * monsters[target_monster]['vel']# todo remove if target ahead of monster
             if target is None:
                 action = 'MOVE'
                 target = home_positions[i]
