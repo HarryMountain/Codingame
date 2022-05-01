@@ -39,7 +39,8 @@ heroes_per_player = int(input())  # Always 3
 heroes = []
 op_heroes = []
 initialized = False
-home_positions = [0.8 * base['pos'] + 0.2 * enemy_base['pos'], 0.7 * base['pos'] + 0.3 * enemy_base['pos']]
+# home_positions = [0.8 * base['pos'] + 0.2 * enemy_base['pos'], 0.7 * base['pos'] + 0.3 * enemy_base['pos']]
+home_positions = [base['pos'] + offset * (1 if my_base_at_zero else -1) for offset in [np.array((5500, 2000)), np.array((3200, 4900))]]
 #enemy_monster_target_offsets = [np.array((0, 4000)), np.array((4000, 0)), np.array((2000, 2000))]
 enemy_monster_target_offsets = [np.array((0, 3000)), np.array((3000, 0)), np.array((0, 4000)), np.array((4000, 0))]
 enemy_monster_targets = []
@@ -135,7 +136,7 @@ while True:
         target = None
         if i != 2:
             if len(monsters) > 2:
-                if i == 0 and mana >= 20 and monsters[0]['dist'] < 500 and get_distance(monsters[0]['pos'] - hero['pos']) < 1280:
+                if i == 0 and mana >= 20 and monsters[0]['dist'] < 800 and get_distance(monsters[0]['pos'] - hero['pos']) < 1280:
                     action = 'SPELL WIND'
                     # target = heroes[1]['pos'] - monsters[0]['pos']
                     target = enemy_base['pos']
