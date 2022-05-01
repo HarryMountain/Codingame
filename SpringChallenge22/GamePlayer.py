@@ -12,6 +12,8 @@ TYPE_MONSTER = 0
 TYPE_MY_HERO = 1
 TYPE_OP_HERO = 2
 
+MONSTER_HEALTH_THRESHOLD = 10
+
 
 def get_distance(v):
     return round(math.sqrt(v.dot(v)))
@@ -94,7 +96,7 @@ while True:
     for monster in enemy_monsters:
         monster['score'] = monster['health'] / get_distance(enemy_base['pos'] - monster['pos'])
     enemy_monsters.sort(key=keyScore, reverse=True)
-    print(enemy_monsters, file=sys.stderr, flush=True)
+    # print(enemy_monsters, file=sys.stderr, flush=True)
 
     for i in range(len(heroes)):
         hero = heroes[i]
@@ -102,17 +104,17 @@ while True:
         target = None
         if i != 2:
             if len(monsters) > 2:
-                if i == 0 and mana >= 10 and monsters[2]['dist'] < 4000:
+                if i == 0 and mana >= 20 and monsters[0]['dist'] < 500 and get_distance(monsters[0]['pos'] - hero['pos']) < 1280:
                     action = 'SPELL WIND'
                     mana -= 10
                     # target = heroes[1]['pos'] - monsters[0]['pos']
                     target = enemy_base['pos']
-            if target is None:
+            if target is None and len(monsters) > 0:
                 action = 'MOVE'
-                if len(monsters) > i:
-                    target = monsters[i]['pos'] + monsters[i]['vel']
-                else:
-                    target = home_positions[i]
+                target_monster = min(i, len(monsters) - 1)
+                target = monsters[target_monster]['pos'] + monsters[target_monster]['vel']
+            if target is None:
+                target = home_positions[i]
                 # if get_distance(hero['pos'] - base['pos']) < 5000 * (i + 1):
                 #     target = hero['pos'] + np.array([1000 * (x - 0.5) for x in np.random.random(2)])
         else:
