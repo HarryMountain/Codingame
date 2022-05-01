@@ -1,6 +1,7 @@
 import sys
 import math
 import numpy as np
+import random
 
 from collections import namedtuple
 
@@ -13,6 +14,10 @@ TYPE_MY_HERO = 1
 TYPE_OP_HERO = 2
 
 MONSTER_HEALTH_THRESHOLD = 10
+EARLY_ROUND_THRESHOLD = 40
+
+MODE_CONTROL = 0
+MODE_SHIELD = 1
 
 
 def get_distance(v):
@@ -25,13 +30,25 @@ def get_distance(v):
 # base_x: The corner of the map representing your base
 base_x, base_y = [int(i) for i in input().split()]
 base = {'pos': np.array((base_x, base_y))}
+my_base_at_zero = base['pos'][0] == 0
 print(base, file=sys.stderr, flush=True)
-enemy_base = {'pos': np.array((17630, 9000)) if base['pos'][0] == 0 else np.array((0, 0))}
+enemy_base = {'pos': np.array((17630, 9000)) if my_base_at_zero else np.array((0, 0))}
+centre = 0.5 * enemy_base['pos'] + 0.5 * base['pos']
+shield_place = enemy_base['pos'] + np.array((4450, 2270)) * (-1 if my_base_at_zero else 1)
 heroes_per_player = int(input())  # Always 3
 heroes = []
 op_heroes = []
 initialized = False
 home_positions = [0.8 * base['pos'] + 0.2 * enemy_base['pos'], 0.7 * base['pos'] + 0.3 * enemy_base['pos']]
+#enemy_monster_target_offsets = [np.array((0, 4000)), np.array((4000, 0)), np.array((2000, 2000))]
+enemy_monster_target_offsets = [np.array((0, 3000)), np.array((3000, 0)), np.array((0, 4000)), np.array((4000, 0))]
+enemy_monster_targets = []
+for offset in enemy_monster_target_offsets:
+    enemy_monster_targets.append(enemy_base['pos'] + offset * (-1 if my_base_at_zero else 1))
+print(enemy_monster_targets, file=sys.stderr, flush=True)
+round_count = 0
+controlled_monsters = 0
+mode = MODE_CONTROL
 
 
 def keyDistance(m):
@@ -44,7 +61,7 @@ def keyScore(m):
 
 # game loop
 while True:
-    our_mana = 0
+    round_count += 1
     for i in range(2):
         # health: Each player's base health
         # mana: Ignore in the first league; Spend ten mana to cast a spell
@@ -60,8 +77,10 @@ while True:
     monsters = []
     enemy_monsters = []
     neutral_monsters = []
+    shielded_enemy_monsters = 0
     heroes = []
     op_heroes = []
+    number_controlled_monsters = 0
     for i in range(entity_count):
         # _id: Unique identifier
         # _type: 0=monster, 1=your hero, 2=opponent hero
@@ -78,8 +97,11 @@ while True:
                 neutral_monsters.append({'id': _id, 'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health})
             if threat_for == 1:
                 monsters.append({'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health})
-            elif threat_for == 2:
-                enemy_monsters.append({'id': _id, 'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health, 'controlled': is_controlled, 'shield': shield_life})
+            elif near_base == 1 and threat_for == 2:
+                if shield_life > 0:
+                    shielded_enemy_monsters += 1
+                else:
+                    enemy_monsters.append({'id': _id, 'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health, 'controlled': is_controlled, 'shield': shield_life})
         elif _type == TYPE_MY_HERO:
             heroes.append({'pos': np.array((x, y))})
         elif _type == TYPE_OP_HERO:
@@ -90,13 +112,22 @@ while True:
     for monster in monsters:
         monster['dist'] = get_distance(base['pos'] - monster['pos'])
     monsters.sort(key=keyDistance)
-    # print(monsters, file=sys.stderr, flush=True)
+    print(monsters, file=sys.stderr, flush=True)
 
     # Arrange monsters targeting enemy by score
     for monster in enemy_monsters:
-        monster['score'] = monster['health'] / get_distance(enemy_base['pos'] - monster['pos'])
-    enemy_monsters.sort(key=keyScore, reverse=True)
-    # print(enemy_monsters, file=sys.stderr, flush=True)
+        #monster['score'] = monster['health'] / get_distance(enemy_base['pos'] - monster['pos'])
+        monster['score'] = get_distance(enemy_base['pos'] - monster['pos']) - 200 * monster['health']
+    enemy_monsters.sort(key=keyScore)
+    print(enemy_monsters, file=sys.stderr, flush=True)
+
+    # Arrange opponent heroes by distance from their base
+    for opp_hero in op_heroes:
+        opp_hero['dist'] = get_distance(enemy_base['pos'] - opp_hero['pos'])
+    op_heroes.sort(key=keyDistance)
+    print(op_heroes, file=sys.stderr, flush=True)
+
+    print(neutral_monsters, file=sys.stderr, flush=True)
 
     for i in range(len(heroes)):
         hero = heroes[i]
@@ -106,40 +137,75 @@ while True:
             if len(monsters) > 2:
                 if i == 0 and mana >= 20 and monsters[0]['dist'] < 500 and get_distance(monsters[0]['pos'] - hero['pos']) < 1280:
                     action = 'SPELL WIND'
-                    mana -= 10
                     # target = heroes[1]['pos'] - monsters[0]['pos']
                     target = enemy_base['pos']
             if target is None and len(monsters) > 0:
                 action = 'MOVE'
                 target_monster = min(i, len(monsters) - 1)
-                target = monsters[target_monster]['pos'] + monsters[target_monster]['vel']
+                target = monsters[target_monster]['pos'] - 0 * monsters[target_monster]['vel'] # todo remove if target ahead of monster
             if target is None:
+                action = 'MOVE'
                 target = home_positions[i]
                 # if get_distance(hero['pos'] - base['pos']) < 5000 * (i + 1):
                 #     target = hero['pos'] + np.array([1000 * (x - 0.5) for x in np.random.random(2)])
         else:
             if len(neutral_monsters) > 0:
-                if mana > 10 and action is None:
-                    for neutral in neutral_monsters:
-                        neutral['dist'] = get_distance(neutral['pos'] - hero['pos'])
-                    neutral_monsters.sort(key=keyDistance)
-                    closest_monster = neutral_monsters[0]
-                    if get_distance(closest_monster['pos'] - hero['pos']) < 2200:
-                        action = 'SPELL CONTROL ' + str(closest_monster['id'])
-                        target = enemy_base['pos']
-                        mana -= 10
+                for neutral in neutral_monsters:
+                    neutral['dist'] = get_distance(neutral['pos'] - hero['pos'])
+                neutral_monsters.sort(key=keyDistance)
+                closest_monster = neutral_monsters[0]
+                if round_count > EARLY_ROUND_THRESHOLD and mana > 10 and action is None:
+                    if mode == MODE_CONTROL:
+                        if get_distance(closest_monster['pos'] - hero['pos']) < 2200:
+                            action = 'SPELL CONTROL ' + str(closest_monster['id'])
+                            #target = enemy_base['pos']
+                            target = random.choice(enemy_monster_targets)
+                            controlled_monsters += 1
+                            if controlled_monsters > 5:
+                                mode = MODE_SHIELD
+                        else:
+                            action = 'MOVE'
+                            target = closest_monster['pos'] - 2 * closest_monster['vel']
                     else:
-                        action = 'MOVE'
-                        target = closest_monster['pos'] - 2 * closest_monster['vel']
+                        if get_distance(enemy_base['pos'] - hero['pos']) > 5000:
+                            # Go towards base
+                            action = 'MOVE'
+                            target = shield_place
+                        else:
+                            if shielded_enemy_monsters > 0:
+                                # We have shielded monsters, target their heroes
+                                if len(op_heroes) > 0:
+                                    if get_distance(op_heroes[0]['pos'] - hero['pos']) < 2200:
+                                        # Control opp hero
+                                        action = 'SPELL CONTROL ' + str(op_heroes[0]['id'])
+                                        target = base['pos']
+                                else:
+                                    # Move towards opp base
+                                    action = 'MOVE'
+                                    target = enemy_base['pos']
+                            elif len(enemy_monsters) > 0:
+                                # Look for monsters to shield
+                                action = 'SPELL SHIELD ' + str(enemy_monsters[0]['id'])
+                                # action = 'SPELL WIND ' + str(enemy_monsters[0]['id'])
+                                # target = enemy_base['pos']
+                            else:
+                                # Back to control mode
+                                mode = MODE_CONTROL
+                                controlled_monsters = 0
+                else:
+                    action = 'MOVE'
+                    target = closest_monster['pos'] + closest_monster['vel']
             if action is None:
                 action = 'MOVE'
-                target = 0.5 * enemy_base['pos'] + 0.5 * base['pos']
+                target = centre
                 # target = monsters[0]['pos'] + monsters[0]['vel']
                 # np.array([1000 * x  for x in np.random.random(2)]) * (1 if other_base[0] == 0 else -1)
 
         # In the first league: MOVE <x> <y> | WAIT; In later leagues: | SPELL <spellParams>;
         if action is None:
             action = 'WAIT'
+        if action[0] == 'S':
+            mana -= 10
         if target is not None:
             action = ' '.join([action, str(int(target[0])), str(int(target[1]))])
         print(action, file=sys.stderr, flush=True)
