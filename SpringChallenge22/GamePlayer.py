@@ -104,7 +104,7 @@ while True:
                 else:
                     enemy_monsters.append({'id': _id, 'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health, 'controlled': is_controlled, 'shield': shield_life})
         elif _type == TYPE_MY_HERO:
-            heroes.append({'pos': np.array((x, y))})
+            heroes.append({'pos': np.array((x, y)), 'id': _id, 'shield': shield_life})
         elif _type == TYPE_OP_HERO:
             op_heroes.append({'pos': np.array((x, y)), 'id': _id})
             print(op_heroes[-1]['pos'], file=sys.stderr, flush=True)
@@ -134,7 +134,10 @@ while True:
         hero = heroes[i]
         action = None
         target = None
-        if i != 2:
+        closest_op_hero = 999999 if len(op_heroes) == 0 else min([get_distance(hero['pos'] - op_hero['pos']) for op_hero in op_heroes])
+        if hero['shield'] == 0 and round_count > 40 and mana > 10 and closest_op_hero < 2500:
+            action = 'SPELL SHIELD ' + str(hero['id'])
+        elif i != 2:
             if len(monsters) > 0:
                 # print(monsters[0]['dist'], file=sys.stderr, flush=True)
                 # print(get_distance(monsters[0]['pos'] - hero['pos']), file=sys.stderr, flush=True)
@@ -146,7 +149,7 @@ while True:
             if target is None and len(monsters) > 0:
                 action = 'MOVE'
                 target_monster = min(i, len(monsters) - 1)
-                target = monsters[target_monster]['pos'] - 0 * monsters[target_monster]['vel']# todo remove if target ahead of monster
+                target = monsters[target_monster]['pos'] - 0 * monsters[target_monster]['vel']
             if target is None:
                 action = 'MOVE'
                 target = home_positions[i]
