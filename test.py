@@ -1,6 +1,3 @@
-import numpy as np
-nums = np.zeros((2, 2), dtype=int)
-def bla(nums):
-    nums[0, 0] += 1
-bla(nums)
-print(nums)
+bla = [1, 2, 3, 5]
+bla.insert(-1, 4)
+print(bla)

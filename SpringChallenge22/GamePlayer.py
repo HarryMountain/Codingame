@@ -34,7 +34,7 @@ my_base_at_zero = base['pos'][0] == 0
 print(base, file=sys.stderr, flush=True)
 enemy_base = {'pos': np.array((17630, 9000)) if my_base_at_zero else np.array((0, 0))}
 centre = 0.5 * enemy_base['pos'] + 0.5 * base['pos']
-shield_place = enemy_base['pos'] + np.array((4450, 2270)) * (-1 if my_base_at_zero else 1)
+shield_place = enemy_base['pos'] + np.array((2200, 1100)) * (-1 if my_base_at_zero else 1)
 heroes_per_player = int(input())  # Always 3
 heroes = []
 op_heroes = []
@@ -97,7 +97,7 @@ while True:
             if near_base == 0 and threat_for != 2 and shield_life == 0 and is_controlled == 0:
                 neutral_monsters.append({'id': _id, 'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health})
             if threat_for == 1:
-                monsters.append({'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health})
+                monsters.append({'pos': np.array((x, y)), 'vel': np.array((vx, vy)), 'health': health, 'id': _id})
             elif near_base == 1 and threat_for == 2:
                 if shield_life > 0:
                     shielded_enemy_monsters += 1
@@ -117,7 +117,7 @@ while True:
 
     # Arrange monsters targeting enemy by score
     for monster in enemy_monsters:
-        #monster['score'] = monster['health'] / get_distance(enemy_base['pos'] - monster['pos'])
+        # monster['score'] = monster['health'] / get_distance(enemy_base['pos'] - monster['pos'])
         monster['score'] = get_distance(enemy_base['pos'] - monster['pos']) - 200 * monster['health']
     enemy_monsters.sort(key=keyScore)
     print(enemy_monsters, file=sys.stderr, flush=True)
@@ -146,6 +146,14 @@ while True:
                     # target = heroes[1]['pos'] - monsters[0]['pos']
                     target = enemy_base['pos']
                     has_winded = True
+            '''
+            if target is None and len(monsters) > 0 and mana > 50:
+                for monster in monsters:
+                    if get_distance(hero['pos'] - monster['pos']) < 2200 and monster['dist'] > 4600:
+                        action = 'SPELL CONTROL ' + str(monster['id'])
+                        target = enemy_base['pos']
+                        break
+            '''
             if target is None and len(monsters) > 0:
                 action = 'MOVE'
                 target_monster = min(i, len(monsters) - 1)
