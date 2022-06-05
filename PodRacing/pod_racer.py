@@ -77,10 +77,11 @@ def evaluate_game_step(position, velocity, old_angle, next_checkpoint_pos, input
 
 
 # Genetic Algorithm
-GENE_LENGTH = 1
-POPULATION_SIZE = 5
+GENE_LENGTH = 6
+POPULATION_SIZE = 10
 GENERATIONS = 10
-
+POWER_FLOOR = 10
+GENE_FLOORS = [0, POWER_FLOOR]
 
 def convert_steer_degrees_to_gene(angle):
     return angle * 100 / 36 + 50
@@ -94,16 +95,12 @@ def create_population(steps):
     population = []
     for j in range(POPULATION_SIZE):
         racer = []
-        for i in range(GENE_LENGTH):
-            if steps is not None:
-                next_step = np.array((convert_steer_degrees_to_gene(steps[i][0]), steps[i][1]))
-                next_step += [random.randint(-5, 5), random.randint(-5, 5)]
-                next_step[0] = max(0, min(100, next_step[0]))
-                next_step[1] = max(0, min(100, next_step[1]))
-                racer.append(next_step)
-            else:
-                # racer.append(np.array((random.randint(0, 100), random.randint(0, 100))))
-                racer.append(np.array((random.randint(0, 100), 85)))
+        if steps is not None:
+            racer = deepcopy(steps[1:])
+            racer.append(np.array((random.randint(0, 100), random.randint(POWER_FLOOR, 100))))
+        else:
+            for i in range(GENE_LENGTH):
+                racer.append(np.array((random.randint(0, 100), random.randint(POWER_FLOOR, 100))))
         population.append(racer)
     return population
 
@@ -134,16 +131,19 @@ def genetic_algorithm(steps, velocity, pos, angle, checkpoints, next_checkpoint_
     scored_population.sort(key=lambda x: x[1], reverse=True)
     print(scored_population, file=sys.stderr, flush=True)
     for i in range(GENERATIONS):
-        for j in range(POPULATION_SIZE):
-            parents = random.sample([l[0] for l in scored_population], 2)
+        for j in range(2, POPULATION_SIZE):
+            parents = random.sample([l[0] for l in scored_population[:j]], 2)
             new_racer = []
             for step in range(GENE_LENGTH):
-                new_step = np.array(((parents[0][step][0] + parents[1][step][0]) // 2, (parents[0][step][1] + parents[1][step][1]) // 2))
+                factor = 1.2 * random.random() - 0.1
+                new_step = np.array(
+                    [min(100, max(GENE_FLOORS[i], parents[0][step][i] * factor + parents[1][step][i] * (1 - factor) + random.randint(-5, 5))) for i in
+                     range(2)])
                 new_racer.append(new_step)
             scored_population.append([new_racer, score(velocity, pos, angle, new_racer, checkpoints, next_checkpoint_idx)])
         scored_population.sort(key=lambda x: x[1], reverse=True)
         scored_population = scored_population[:POPULATION_SIZE + 1]
-        # print(scored_population, file=sys.stderr, flush=True)
+        print(scored_population[0][1], scored_population[0][0], file=sys.stderr, flush=True)
 
     return scored_population[0][0]
 
@@ -178,7 +178,7 @@ while True:
     # target_angle = get_angle(np.array((next_checkpoint_x, next_checkpoint_y)) - position)
     # thrust = 100
     # target_position = position + 10000 * np.array((math.sin(target_angle), math.cos(target_angle)))
-    steps = genetic_algorithm(None, deepcopy(velocity), position, angle, checkpoints, next_checkpoint_idx)#TODO steps
+    steps = genetic_algorithm(steps, deepcopy(velocity), position, angle, checkpoints, next_checkpoint_idx)
     step = steps[0]
 
     steer, thrust = step
