@@ -77,17 +77,13 @@ def evaluate_game_step(position, velocity, old_angle, next_checkpoint_pos, input
 
 
 # Genetic Algorithm
-
-GENERATIONS = 2
+GENE_LENGTH = 1
 POPULATION_SIZE = 5
+GENERATIONS = 10
 
 
 def convert_steer_degrees_to_gene(angle):
     return angle * 100 / 36 + 50
-
-
-def convert_steer_gene_to_degrees(angle):
-    return (angle - 50) * 36 / 100
 
 
 def convert_steer_gene_to_radians(angle):
@@ -98,7 +94,7 @@ def create_population(steps):
     population = []
     for j in range(POPULATION_SIZE):
         racer = []
-        for i in range(6):
+        for i in range(GENE_LENGTH):
             if steps is not None:
                 next_step = np.array((convert_steer_degrees_to_gene(steps[i][0]), steps[i][1]))
                 next_step += [random.randint(-5, 5), random.randint(-5, 5)]
@@ -106,12 +102,15 @@ def create_population(steps):
                 next_step[1] = max(0, min(100, next_step[1]))
                 racer.append(next_step)
             else:
-                racer.append(np.array((random.randint(0, 100), random.randint(0, 100))))
+                # racer.append(np.array((random.randint(0, 100), random.randint(0, 100))))
+                racer.append(np.array((random.randint(0, 100), 85)))
         population.append(racer)
     return population
 
 
 def score(velocity, pos, angle, racer, checkpoints, next_checkpoint_idx):
+    velocity = deepcopy(velocity)
+    pos = deepcopy(pos)
     score = 0
     checkpoint = False
     for steer, thrust in racer:
@@ -130,14 +129,15 @@ def genetic_algorithm(steps, velocity, pos, angle, checkpoints, next_checkpoint_
     population = create_population(steps)
     scored_population = []
     for racer in population:
-        racer_score = score(velocity, pos, angle, racer, checkpoints, next_checkpoint_idx)# TODO fix velocity being changed
+        racer_score = score(velocity, pos, angle, racer, checkpoints, next_checkpoint_idx)
         scored_population.append([racer, racer_score])
     scored_population.sort(key=lambda x: x[1], reverse=True)
+    print(scored_population, file=sys.stderr, flush=True)
     for i in range(GENERATIONS):
         for j in range(POPULATION_SIZE):
             parents = random.sample([l[0] for l in scored_population], 2)
             new_racer = []
-            for step in range(6):
+            for step in range(GENE_LENGTH):
                 new_step = np.array(((parents[0][step][0] + parents[1][step][0]) // 2, (parents[0][step][1] + parents[1][step][1]) // 2))
                 new_racer.append(new_step)
             scored_population.append([new_racer, score(velocity, pos, angle, new_racer, checkpoints, next_checkpoint_idx)])
@@ -154,6 +154,7 @@ first_go = True
 next_checkpoint_idx = 1
 velocity = [0, 0]
 angle = 0
+touched_checkpoint = False
 while True:
     # next_checkpoint_x: x position of the next check point
     # next_checkpoint_y: y position of the next check point
@@ -167,6 +168,9 @@ while True:
         sim_pos = np.array((x, y))
     if [next_checkpoint_x, next_checkpoint_y] not in checkpoints:
         checkpoints.append([next_checkpoint_x, next_checkpoint_y])
+    if touched_checkpoint:
+        next_checkpoint_idx = (next_checkpoint_idx + 1) % len(checkpoints)
+        touched_checkpoint = False
     opponent_x, opponent_y = [int(i) for i in input().split()]
     position = np.array((x, y))
     print(position, sim_pos, file=sys.stderr, flush=True)
@@ -174,9 +178,8 @@ while True:
     # target_angle = get_angle(np.array((next_checkpoint_x, next_checkpoint_y)) - position)
     # thrust = 100
     # target_position = position + 10000 * np.array((math.sin(target_angle), math.cos(target_angle)))
-    steps = genetic_algorithm(steps, deepcopy(velocity), position, angle, checkpoints, next_checkpoint_idx)
+    steps = genetic_algorithm(None, deepcopy(velocity), position, angle, checkpoints, next_checkpoint_idx)#TODO steps
     step = steps[0]
-    print(steps, file=sys.stderr, flush=True)
 
     steer, thrust = step
     angle_to_go = update_angle_with_steer(angle, steer)
@@ -184,10 +187,7 @@ while True:
     target_position = [x + math.sin(angle_to_go) * 1000, y + math.cos(angle_to_go) * 1000]
     outputs = map(round, np.append(target_position, thrust))
     print(position, velocity, angle, checkpoints[next_checkpoint_idx], angle_to_go, thrust, file=sys.stderr, flush=True)
-    new_data = evaluate_game_step(position, velocity, angle, checkpoints[next_checkpoint_idx], angle_to_go, thrust)
-    sim_pos = new_data[0]
-    velocity = new_data[1]
-    angle = new_data[2]
+    sim_pos, velocity, angle, touched_checkpoint = evaluate_game_step(position, velocity, angle, checkpoints[next_checkpoint_idx], angle_to_go, thrust)
     # outputs = map(round, [next_checkpoint_x, next_checkpoint_y, 50])
     print(*outputs, 'Get out of my way')
 
