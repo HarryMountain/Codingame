@@ -13,8 +13,7 @@ for i in range(100):
     FIBBONACCI_SEQUENCE.append(FIBBONACCI_SEQUENCE[-2] + FIBBONACCI_SEQUENCE[-1])
 
 
-def get_distance(pos_1, pos_2):
-    vector = pos_1 - pos_2
+def get_distance(vector):
     return round(vector.dot(vector))
 
 
@@ -28,8 +27,8 @@ def remove_array(my_list, item_to_remove):
 class GameState:
     def __init__(self, ash_pos, zombies, humans):
         self.ash_pos = ash_pos
-        self.zombies = []
         # Zombie data is [Position, Target, TargetIsAsh, ZombieMove, DistanceToTarget, Id]
+        self.zombies = []
         for i in range(len(zombies)):
             self.zombies.append([zombies[i], None, False, None, -1, i])
         self.humans = humans
@@ -46,29 +45,29 @@ class GameState:
         for zombie in self.zombies:
             # print('Zombie : ' + str(zombie), file=sys.stderr, flush=True)
             changed = False
-            if zombie[1] is None or zombie[2]:
+            target_is_ash = zombie[2]
+            if zombie[1] is None or target_is_ash:
                 # Recalculate target
-                if zombie[2]:
-                    best_human = zombie[1]
-                    best_human_dist = zombie[4]**2
-                else:
-                    best_human = -1
-                    best_human_dist = -1
+                best_human = zombie[1] if target_is_ash else None
+                best_human_dist = zombie[4]**2 if target_is_ash else -1
                 for human in self.humans:
                     # if zombie[0] is None or human is None:
                       #   print(zombie[0], human, file=sys.stderr, flush=True)
-                    distance = get_distance(zombie[0], human)
+                    distance = get_distance(zombie[0] - human)
                     if distance < best_human_dist or best_human_dist == -1:
                         best_human = human
                         best_human_dist = distance
                         changed = True
-                zombie[1] = best_human
-                # print('Best human distance: ' + str(best_human_dist), file=sys.stderr, flush=True)
-                zombie[4] = math.sqrt(best_human_dist)
-                # print('Set zombie distance : ' + str(zombie[4]), file=sys.stderr, flush=True)
-            else:
-                # Check if ash is closer
-                ash_distance = math.sqrt(get_distance(self.ash_pos, zombie[0]))
+                if best_human is not None:
+                    zombie[1] = best_human
+                    zombie[2] = False
+                    # print('Best human distance: ' + str(best_human_dist), file=sys.stderr, flush=True)
+                    zombie[4] = math.sqrt(best_human_dist)
+                    # print('Set zombie distance : ' + str(zombie[4]), file=sys.stderr, flush=True)
+
+            # Check if ash is closer
+            if not (abs(self.ash_pos[0] - zombie[0][0]) > zombie[4] or abs(self.ash_pos[1] - zombie[0][1]) > zombie[4]):
+                ash_distance = math.sqrt(get_distance(self.ash_pos - zombie[0]))
                 # print('Ash distance : ' + str(ash_distance), file=sys.stderr, flush=True)
                 if ash_distance < zombie[4]:
                     zombie[1] = self.ash_pos
@@ -77,8 +76,8 @@ class GameState:
                     changed = True
             if changed:
                 # print(zombie[4], file=sys.stderr, flush=True)
-                zombie[3] = np.array(((zombie[1][0] - zombie[0][0]) * 400 / zombie[4], (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]))
-            zombie[0] = np.array(zombie[0] + zombie[3], dtype=int)
+                zombie[3] = np.array(((zombie[1][0] - zombie[0][0]) * 400 / zombie[4], (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]), dtype=int)
+            zombie[0] += zombie[3]
             zombie[4] -= 400
 
     def update(self, move):
@@ -89,7 +88,7 @@ class GameState:
         score = 0
         humans_alive_score = (len(self.humans) ** 2) * 10
         for zombie in self.zombies:
-            if get_distance(self.ash_pos, zombie[0]) <= 4000000:
+            if get_distance(self.ash_pos - zombie[0]) <= 4000000:
                 zombies_killed.append(zombie[5])
             elif zombie[4] < 400 and zombie[1] is not None:
                 # if zombie[1] is None:
