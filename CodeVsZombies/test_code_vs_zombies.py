@@ -31,6 +31,20 @@ class TestCodeVsZombies(unittest.TestCase):
             score = state.update(steps[i])
             self.assertEqual(expected_scores[i], score)
 
+    def test_case3_two_zombies_redux(self):
+        ash_position = np.array((10999, 0))
+        zombie_positions = [np.array((1250, 5500)), np.array((15999, 5500))]
+        human_positions = [np.array((8000, 5500)), np.array((4000, 5500))]
+
+        expected_scores = [0, 0, 0, 0, 0, 40, 0, 0, 0, 0]
+
+        state = GameState(ash_position, zombie_positions, human_positions)
+        steps = genetic_algorithm(None, state)
+        for i in range(10):
+            print(i)
+            score = state.update(steps[i])
+            self.assertEqual(expected_scores[i], score)
+
     def test_mass_zombie_attack(self):
         ash_position = np.array((7992, 8304))
         zombie_positions = [np.array((3996, 4152)), np.array((3996, 4844)), np.array((3996, 7612)), np.array((5328, 1384)),

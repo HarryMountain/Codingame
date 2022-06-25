@@ -1,12 +1,10 @@
+import pickle
 import random
 import sys
 import math
-from copy import deepcopy
 
 import numpy as np
-# Save humans, destroy zombies!
 
-# game loop
 FIBBONACCI_SEQUENCE = [1, 2]
 
 for i in range(100):
@@ -42,68 +40,69 @@ class GameState:
             self.zombies.append([zombies[i], None, False, None, -1, i, 0])
         self.humans = humans
         self.set_zombie_targets()
-        # self.ash_pos_orig = deepcopy(ash_pos)
-        # self.zombies_orig = deepcopy(zombies)
-        # self.humans_orig = deepcopy(humans)
-
-    # def reset(self):
-        # self.zombie_targets = []
 
     def set_zombie_targets(self):
         for zombie in self.zombies:
-            recalc = True
-            target_is_ash = zombie[2]
-            recalculate_move = False
-            if not target_is_ash:
-                if zombie[6] > 0:
-                    # Don't need to check vs Ash
-                    recalc = False
-                    zombie[6] -= 1
-                else:
-                    # Check if ash is closer
-                    ash_distance = math.sqrt(get_distance(self.ash_pos - zombie[0]))
+            # Possibilities are
+            # No target set - choose target from all humans and Ash
+            # On target for a human but need ro recheck whether to target Ash
+            # Targeting Ash - check whether there is a closer human to target
+
+            target_missing = zombie[1] is None
+            target_ash = zombie[2]
+            target_human = zombie[1] is not None and not target_ash
+            recalc_move_vector = False
+
+            if not target_ash and zombie[6] > 0:
+                # Don't need to check anything else
+                zombie[6] -= 1
+            else:
+                ash_distance = round(math.sqrt(get_distance(self.ash_pos - zombie[0])))
+                if target_human:
+                    # Check if Ash is closer
                     # print('Ash distance : ' + str(ash_distance), file=sys.stderr, flush=True)
-                    update = False
-                    if zombie[4] == -1:
-                        update = True
-                    elif ash_distance < zombie[4]:
-                        update = True
-                        recalc = False
-                    if update:
-                        zombie[1] = deepcopy(self.ash_pos)
+                    if ash_distance < zombie[4]:
+                        zombie[1] = self.ash_pos
                         zombie[2] = True
                         zombie[4] = ash_distance
-                        recalculate_move = True
+                        recalc_move_vector = True
                     else:
                         zombie[6] = ash_distance // 1400
-            if recalc:
-                # Targeting Ash or no target set - recalculate target
-                best_human = None
-                ash_distance = zombie[4] ** 2
-                best_human_dist = ash_distance
-                for human in self.humans:
-                    distance = get_distance(zombie[0] - human)
-                    if distance < best_human_dist:
-                        best_human = human
-                        best_human_dist = distance
-                if best_human is not None:
-                    # Switch Zombie to target this human
-                    zombie[1] = best_human
-                    zombie[2] = False
-                    # print('Best human distance: ' + str(best_human_dist), file=sys.stderr, flush=True)
-                    zombie[3] = np.array(
-                        ((zombie[1][0] - zombie[0][0]) * 400 / zombie[4],
-                         (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]),
-                        dtype=int)
-                    zombie[4] = math.sqrt(best_human_dist)
-                    # print('Set zombie distance : ' + str(zombie[4]), file=sys.stderr, flush=True)
+                        # print("Hi", ash_distance, zombie[6])
+                else:
+                    # Scan through all possible targets including Ash
+                    best_human_dist = ash_distance**2
+                    best_human = None
+                    for human in self.humans:
+                        distance = get_distance(zombie[0] - human)
+                        if distance < best_human_dist:
+                            best_human = human
+                            best_human_dist = distance
+                    if best_human is not None:
+                        # Switch Zombie to target this human
+                        zombie[1] = best_human
+                        zombie[2] = False
+                        # print('Best human distance: ' + str(best_human_dist), file=sys.stderr, flush=True)
+                        zombie[4] = round(math.sqrt(best_human_dist))
+                        # print('Set zombie distance : ' + str(zombie[4]), file=sys.stderr, flush=True)
+                    else:
+                        # Switch Zombie to target Ash
+                        zombie[1] = self.ash_pos
+                        zombie[2] = True
+                        zombie[4] = ash_distance
                     zombie[6] = ash_distance // 1400
-                    recalculate_move = True
-            if recalculate_move:
-                zombie[3] = np.array(
-                    ((zombie[1][0] - zombie[0][0]) * 400 / zombie[4],
-                    (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]),
-                    dtype=int)
+                    # print("Hello", ash_distance, zombie[6])
+                    recalc_move_vector = True
+
+                # Set move vector if needed
+                if recalc_move_vector:
+                    if zombie[4] > 0:
+                        zombie[3] = np.array(
+                            ((zombie[1][0] - zombie[0][0]) * 400 / zombie[4],
+                             (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]),
+                            dtype=int)
+                    else:
+                        zombie[3] = np.array(0, 0, dtype=int)
 
     def move_zombies(self):
         self.set_zombie_targets()
@@ -131,6 +130,8 @@ class GameState:
                 remove_array(self.humans, zombie[1])
                 # print('Zombie[1] pre ' + str(zombie[0]) + str(zombie[1]), file=sys.stderr, flush=True)
                 zombie[1] = None
+                zombie[2] = False
+                zombie[4] = -1
                 # print('Zombie[1] after ' + str(zombie[0]) + str(zombie[1]), file=sys.stderr, flush=True)
                 # print('HUMAN DEAD', file=sys.stderr, flush=True)
         for i in range(len(zombies_killed)):
@@ -146,9 +147,10 @@ class GameState:
         return score
 
 
-def score_moves(game_state, moves):
+def score_moves(game_state_pkl, moves):
+    state = pickle.loads(game_state_pkl)
     score = 0
-    state = deepcopy(game_state)
+
     #print(state.zombies)
     for move in moves:
         score += state.update(move)
@@ -184,10 +186,13 @@ def create_population(steps):
 
 
 def genetic_algorithm(steps, game_state):
+    # Store original settings
+    game_state_pkl = pickle.dumps(game_state)
+
     population = create_population(steps)
     scored_population = []
     for moves in population:
-        scored_population.append([moves, score_moves(game_state, moves)])
+        scored_population.append([moves, score_moves(game_state_pkl, moves)])
     scored_population.sort(key=lambda x: x[1], reverse=True)
     scored_population = scored_population[:POPULATION_SIZE + 1]
     # print(scored_population, file=sys.stderr, flush=True)
@@ -204,7 +209,7 @@ def genetic_algorithm(steps, game_state):
                 new_move = np.array((min(1000, max(-1000, parents[0][move][0] * factor + parents[1][move][0] * (1 - factor) + random.randint(-50, 50))),
                                      min(1000, max(-1000, parents[0][move][0] * factor + parents[1][move][0] * (1 - factor) + random.randint(-50, 50)))), dtype=int)
                 new_moves.append(new_move)
-            scored_population.append([new_moves, score_moves(game_state, new_moves)])
+            scored_population.append([new_moves, score_moves(game_state_pkl, new_moves)])
         scored_population.sort(key=lambda x: x[1], reverse=True)
         scored_population = scored_population[:POPULATION_SIZE + 1]
         # print(scored_population[0][1], scored_population[0][0], file=sys.stderr, flush=True)
@@ -216,6 +221,7 @@ def genetic_algorithm(steps, game_state):
 
 
 if __name__ == "__main__":
+    # game loop
     steps = None
     while True:
         humans = []
@@ -237,7 +243,6 @@ if __name__ == "__main__":
         # print(ash_position, file=sys.stderr, flush=True)
         # print(zombie_positions, file=sys.stderr, flush=True)
         # print(human_positions, file=sys.stderr, flush=True)
-        # Write an action using print
         state = GameState(ash_position, zombie_positions, human_positions)
         steps = genetic_algorithm(steps, state)
         move = steps[0]
