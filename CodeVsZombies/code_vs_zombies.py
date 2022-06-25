@@ -14,7 +14,8 @@ for i in range(100):
 
 
 def get_distance(vector):
-    return round(vector.dot(vector))
+    # return round(vector.dot(vector))
+    return vector[0]**2 + vector[1]**2
 
 
 def remove_array(my_list, item_to_remove):
@@ -24,13 +25,21 @@ def remove_array(my_list, item_to_remove):
             break
 
 
+# Zombie data is [
+#     0 : Position
+#     1 : Target
+#     2 : TargetIsAsh
+#     3 : ZombieMoveVector
+#     4 : DistanceToTarget
+#     5 : Id
+#     6 : CountToCheckAsh
 class GameState:
     def __init__(self, ash_pos, zombies, humans):
         self.ash_pos = ash_pos
-        # Zombie data is [Position, Target, TargetIsAsh, ZombieMove, DistanceToTarget, Id]
+
         self.zombies = []
         for i in range(len(zombies)):
-            self.zombies.append([zombies[i], None, False, None, -1, i])
+            self.zombies.append([zombies[i], None, False, None, -1, i, 0])
         self.humans = humans
         self.set_zombie_targets()
         # self.ash_pos_orig = deepcopy(ash_pos)
@@ -41,45 +50,59 @@ class GameState:
         # self.zombie_targets = []
 
     def set_zombie_targets(self):
-        # if self. zombies[0][0] is None:
-        # print('Zombies move : ' + str(self.zombies), file=sys.stderr, flush=True)
         for zombie in self.zombies:
-            # print('Zombie : ' + str(zombie), file=sys.stderr, flush=True)
-            changed = False
+            recalc = True
             target_is_ash = zombie[2]
-            if zombie[1] is None or target_is_ash:
-                # Recalculate target
-                best_human = zombie[1] if target_is_ash else None
-                best_human_dist = zombie[4] ** 2 if target_is_ash else -1
+            recalculate_move = False
+            if not target_is_ash:
+                if zombie[6] > 0:
+                    # Don't need to check vs Ash
+                    recalc = False
+                    zombie[6] -= 1
+                else:
+                    # Check if ash is closer
+                    ash_distance = math.sqrt(get_distance(self.ash_pos - zombie[0]))
+                    # print('Ash distance : ' + str(ash_distance), file=sys.stderr, flush=True)
+                    update = False
+                    if zombie[4] == -1:
+                        update = True
+                    elif ash_distance < zombie[4]:
+                        update = True
+                        recalc = False
+                    if update:
+                        zombie[1] = deepcopy(self.ash_pos)
+                        zombie[2] = True
+                        zombie[4] = ash_distance
+                        recalculate_move = True
+                    else:
+                        zombie[6] = ash_distance // 1400
+            if recalc:
+                # Targeting Ash or no target set - recalculate target
+                best_human = None
+                ash_distance = zombie[4] ** 2
+                best_human_dist = ash_distance
                 for human in self.humans:
-                    # if zombie[0] is None or human is None:
-                    #   print(zombie[0], human, file=sys.stderr, flush=True)
-                    # if best_human is None or (abs(zombie[0][0] - human[0]) < best_human_dist and abs(zombie[0][1] - human[1]) < best_human_dist):
                     distance = get_distance(zombie[0] - human)
-                    if distance < best_human_dist or best_human is None:
+                    if distance < best_human_dist:
                         best_human = human
                         best_human_dist = distance
-                        changed = True
                 if best_human is not None:
+                    # Switch Zombie to target this human
                     zombie[1] = best_human
                     zombie[2] = False
                     # print('Best human distance: ' + str(best_human_dist), file=sys.stderr, flush=True)
+                    zombie[3] = np.array(
+                        ((zombie[1][0] - zombie[0][0]) * 400 / zombie[4],
+                         (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]),
+                        dtype=int)
                     zombie[4] = math.sqrt(best_human_dist)
                     # print('Set zombie distance : ' + str(zombie[4]), file=sys.stderr, flush=True)
-
-            # Check if ash is closer
-            #if not (abs(self.ash_pos[0] - zombie[0][0]) > zombie[4] or abs(self.ash_pos[1] - zombie[0][1]) > zombie[4]):
-            ash_distance = math.sqrt(get_distance(self.ash_pos - zombie[0]))
-            # print('Ash distance : ' + str(ash_distance), file=sys.stderr, flush=True)
-            if ash_distance < zombie[4]:
-                zombie[1] = deepcopy(self.ash_pos)
-                zombie[2] = True
-                zombie[4] = ash_distance
-                changed = True
-            if changed:
-                # print(zombie[4], file=sys.stderr, flush=True)
+                    zombie[6] = ash_distance // 1400
+                    recalculate_move = True
+            if recalculate_move:
                 zombie[3] = np.array(
-                    ((zombie[1][0] - zombie[0][0]) * 400 / zombie[4], (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]),
+                    ((zombie[1][0] - zombie[0][0]) * 400 / zombie[4],
+                    (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]),
                     dtype=int)
 
     def move_zombies(self):
