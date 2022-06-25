@@ -53,7 +53,7 @@ class TestCodeVsZombies(unittest.TestCase):
                            np.array((2118, 1983)), np.array((3167, 480)), np.array((6576, 664)), np.array((8704, 1276)), np.array((13340, 5663)),
                            np.array((13808, 4731)), np.array((15355, 3528)), np.array((15495, 5035)), np.array((15182, 6184)), np.array((15564, 7640))]
 
-        for i in range(10):
+        for i in range(20):
             state = GameState(ash_position, zombie_positions, human_positions)
             steps = genetic_algorithm(None, state)
             #self.assertEqual(expected_scores[i], score)

@@ -39,77 +39,79 @@ class GameState:
         for i in range(len(zombies)):
             self.zombies.append([zombies[i], None, False, None, -1, i, 0])
         self.humans = humans
+        self.live_humans = len(humans)
         self.set_zombie_targets()
 
     def set_zombie_targets(self):
         for zombie in self.zombies:
-            # Possibilities are
-            # No target set - choose target from all humans and Ash
-            # On target for a human but need ro recheck whether to target Ash
-            # Targeting Ash - check whether there is a closer human to target
+            if zombie is not None:
+                # Possibilities are
+                # No target set - choose target from all humans and Ash
+                # On target for a human but need ro recheck whether to target Ash
+                # Targeting Ash - check whether there is a closer human to target
 
-            target_missing = zombie[1] is None
-            target_ash = zombie[2]
-            target_human = zombie[1] is not None and not target_ash
-            recalc_move_vector = False
+                target_ash = zombie[2]
+                target_human = zombie[1] is not None and not target_ash
+                recalc_move_vector = False
 
-            if not target_ash and zombie[6] > 0:
-                # Don't need to check anything else
-                zombie[6] -= 1
-            else:
-                ash_distance = round(math.sqrt(get_distance(self.ash_pos - zombie[0])))
-                if target_human:
-                    # Check if Ash is closer
-                    # print('Ash distance : ' + str(ash_distance), file=sys.stderr, flush=True)
-                    if ash_distance < zombie[4]:
-                        zombie[1] = self.ash_pos
-                        zombie[2] = True
-                        zombie[4] = ash_distance
-                        recalc_move_vector = True
-                    else:
-                        zombie[6] = ash_distance // 1400
-                        # print("Hi", ash_distance, zombie[6])
+                if not target_ash and zombie[6] > 0:
+                    # Don't need to check anything else
+                    zombie[6] -= 1
                 else:
-                    # Scan through all possible targets including Ash
-                    best_human_dist = ash_distance**2
-                    best_human = None
-                    for human in self.humans:
-                        distance = get_distance(zombie[0] - human)
-                        if distance < best_human_dist:
-                            best_human = human
-                            best_human_dist = distance
-                    if best_human is not None:
-                        # Switch Zombie to target this human
-                        zombie[1] = best_human
-                        zombie[2] = False
-                        # print('Best human distance: ' + str(best_human_dist), file=sys.stderr, flush=True)
-                        zombie[4] = round(math.sqrt(best_human_dist))
-                        # print('Set zombie distance : ' + str(zombie[4]), file=sys.stderr, flush=True)
+                    ash_distance = round(math.sqrt(get_distance(self.ash_pos - zombie[0])))
+                    if target_human:
+                        # Check if Ash is closer
+                        # print('Ash distance : ' + str(ash_distance), file=sys.stderr, flush=True)
+                        if ash_distance < zombie[4]:
+                            zombie[1] = self.ash_pos
+                            zombie[2] = True
+                            zombie[4] = ash_distance
+                            recalc_move_vector = True
+                        else:
+                            zombie[6] = ash_distance // 1400
+                            # print("Hi", ash_distance, zombie[6])
                     else:
-                        # Switch Zombie to target Ash
-                        zombie[1] = self.ash_pos
-                        zombie[2] = True
-                        zombie[4] = ash_distance
-                    zombie[6] = ash_distance // 1400
-                    # print("Hello", ash_distance, zombie[6])
-                    recalc_move_vector = True
+                        # Scan through all possible targets including Ash
+                        best_human_dist = ash_distance**2
+                        best_human = None
+                        for human in self.humans:
+                            distance = get_distance(zombie[0] - human)
+                            if distance < best_human_dist:
+                                best_human = human
+                                best_human_dist = distance
+                        if best_human is not None:
+                            # Switch Zombie to target this human
+                            zombie[1] = best_human
+                            zombie[2] = False
+                            # print('Best human distance: ' + str(best_human_dist), file=sys.stderr, flush=True)
+                            zombie[4] = round(math.sqrt(best_human_dist))
+                            # print('Set zombie distance : ' + str(zombie[4]), file=sys.stderr, flush=True)
+                        else:
+                            # Switch Zombie to target Ash
+                            zombie[1] = self.ash_pos
+                            zombie[2] = True
+                            zombie[4] = ash_distance
+                        zombie[6] = ash_distance // 1400
+                        # print("Hello", ash_distance, zombie[6])
+                        recalc_move_vector = True
 
-                # Set move vector if needed
-                if recalc_move_vector:
-                    if zombie[4] > 0:
-                        zombie[3] = np.array(
-                            ((zombie[1][0] - zombie[0][0]) * 400 / zombie[4],
-                             (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]),
-                            dtype=int)
-                    else:
-                        zombie[3] = np.array(0, 0, dtype=int)
+                    # Set move vector if needed
+                    if recalc_move_vector:
+                        if zombie[4] > 0:
+                            zombie[3] = np.array(
+                                ((zombie[1][0] - zombie[0][0]) * 400 / zombie[4],
+                                 (zombie[1][1] - zombie[0][1]) * 400 / zombie[4]),
+                                dtype=int)
+                        else:
+                            zombie[3] = np.array((0, 0), dtype=int)
 
     def move_zombies(self):
         self.set_zombie_targets()
         for zombie in self.zombies:
-            zombie[0][0] += zombie[3][0]
-            zombie[0][1] += zombie[3][1]
-            zombie[4] -= 400
+            if zombie is not None:
+                zombie[0][0] += zombie[3][0]
+                zombie[0][1] += zombie[3][1]
+                zombie[4] -= 400
 
     def update(self, move):
         # print(self.ash_pos, file=sys.stderr, flush=True)
@@ -117,33 +119,33 @@ class GameState:
         self.ash_pos[0] = min(16000, max(0, self.ash_pos[0] + move[0]))
         self.ash_pos[1] = min(9000, max(0, self.ash_pos[1] + move[1]))
         #print(self.ash_pos)
-        zombies_killed = []
         score = 0
-        humans_alive_score = (len(self.humans) ** 2) * 10
+        humans_alive_score = (self.live_humans ** 2) * 10
+        # current_num_zombies = len(self.zombies)
+        zombies_killed = 0
+        for i in range(len(self.zombies)):
+            if self.zombies[i] is not None:
+                if get_distance(self.ash_pos - self.zombies[i][0]) < 4000000:
+                    self.zombies[i] = None
+                    zombies_killed += 1
+        #self.zombies[:] = (x for x in self.zombies if get_distance(self.ash_pos - x[0]) > 4000000)
+        #zombies_killed = current_num_zombies - len(self.zombies)
+        score += humans_alive_score * sum(FIBBONACCI_SEQUENCE[:zombies_killed])
+
         for zombie in self.zombies:
-            if get_distance(self.ash_pos - zombie[0]) <= 4000000:
-                zombies_killed.append(zombie[5])
-            elif zombie[4] < 400 and zombie[1] is not None:
+            if zombie is not None and not zombie[2] and zombie[4] < 400 and zombie[1] is not None:
                 # if zombie[1] is None:
                     # print('Zombie killing human ' + str(zombie[1]), file=sys.stderr, flush=True)
                 zombie[0] = zombie[1]
                 remove_array(self.humans, zombie[1])
+                self.live_humans -= 1
+
                 # print('Zombie[1] pre ' + str(zombie[0]) + str(zombie[1]), file=sys.stderr, flush=True)
                 zombie[1] = None
                 zombie[2] = False
                 zombie[4] = -1
                 # print('Zombie[1] after ' + str(zombie[0]) + str(zombie[1]), file=sys.stderr, flush=True)
                 # print('HUMAN DEAD', file=sys.stderr, flush=True)
-        for i in range(len(zombies_killed)):
-            # print('Zombies killed: ' + str(zombies_killed), file=sys.stderr, flush=True)
-            # print('Zombies : ' + str(self.zombies), file=sys.stderr, flush=True)
-            zombie_to_kill = zombies_killed[i]
-            for j in range(len(self.zombies)):
-                if self.zombies[j][5] == zombie_to_kill:
-                    self.zombies.pop(j)
-                    break
-            score += humans_alive_score * FIBBONACCI_SEQUENCE[i]
-            # print('Zombies after : ' + str(self.zombies), file=sys.stderr, flush=True)
         return score
 
 
@@ -162,7 +164,6 @@ def score_moves(game_state_pkl, moves):
 GENE_LENGTH = 20
 POPULATION_SIZE = 10
 GENERATIONS = 10
-POWER_FLOOR = 10
 
 
 def create_population(steps):
@@ -215,8 +216,8 @@ def genetic_algorithm(steps, game_state):
         # print(scored_population[0][1], scored_population[0][0], file=sys.stderr, flush=True)
         # print('Best score generation : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
 
-    # print('Final best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
-    # print('Steps : ' + str(scored_population[0][0]), file=sys.stderr, flush=True)
+    print('Final best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
+    print('Steps : ' + str(scored_population[0][0]), file=sys.stderr, flush=True)
     return scored_population[0][0]
 
 
@@ -249,8 +250,9 @@ if __name__ == "__main__":
         score = state.update(move)
         if score > 0:
             steps = None
-        if len(state.zombies) > 0:
-            print(state.zombies[0], file=sys.stderr, flush=True)
+        #if len(state.zombies) > 0:
+            #print(state.zombies[0], file=sys.stderr, flush=True)
+        print("Steps : " + str(steps), file=sys.stderr, flush=True)
         print('Score : ' + str(score), file=sys.stderr, flush=True)
 
         print(min(16000, max(0, ash_x + move[0])), min(9000, max(0, ash_y + move[1])))
