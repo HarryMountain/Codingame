@@ -13,7 +13,7 @@ class TestCodeVsZombies(unittest.TestCase):
         expected_scores = [0, 0, 0, 0, 0, 0, 0, 0, 0, 10]
 
         state = GameState(ash_position, zombie_positions, human_positions)
-        steps = genetic_algorithm(None, state)
+        steps = genetic_algorithm(None, state, 1)
         for i in range(10):
             score = state.update(steps[i])
             self.assertEqual(expected_scores[i], score)
@@ -26,7 +26,7 @@ class TestCodeVsZombies(unittest.TestCase):
         expected_scores = [0, 0, 0, 0, 0, 0, 0, 0, 0, 10]
 
         state = GameState(ash_position, zombie_positions, human_positions)
-        steps = genetic_algorithm(None, state)
+        steps = genetic_algorithm(None, state, 1)
         for i in range(10):
             score = state.update(steps[i])
             self.assertEqual(expected_scores[i], score)
@@ -39,7 +39,7 @@ class TestCodeVsZombies(unittest.TestCase):
         expected_scores = [0, 0, 0, 0, 0, 40, 0, 0, 0, 0]
 
         state = GameState(ash_position, zombie_positions, human_positions)
-        steps = genetic_algorithm(None, state)
+        steps = genetic_algorithm(None, state, 1)
         for i in range(10):
             print(i)
             score = state.update(steps[i])
@@ -55,7 +55,7 @@ class TestCodeVsZombies(unittest.TestCase):
 
         for i in range(20):
             state = GameState(ash_position, zombie_positions, human_positions)
-            steps = genetic_algorithm(None, state)
+            steps = genetic_algorithm(None, state, 1)
             #self.assertEqual(expected_scores[i], score)
 
 

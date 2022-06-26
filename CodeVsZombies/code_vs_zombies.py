@@ -1,3 +1,4 @@
+import time
 import pickle
 import random
 import sys
@@ -31,13 +32,14 @@ def remove_array(my_list, item_to_remove):
 #     4 : DistanceToTarget
 #     5 : Id
 #     6 : CountToCheckAsh
+#     7 : DistanceToAsh
 class GameState:
     def __init__(self, ash_pos, zombies, humans):
         self.ash_pos = ash_pos
 
         self.zombies = []
         for i in range(len(zombies)):
-            self.zombies.append([zombies[i], None, False, None, -1, i, 0])
+            self.zombies.append([zombies[i], None, False, None, -1, i, 0, get_distance(ash_pos - zombies[i])])
         self.humans = humans
         self.live_humans = len(humans)
         self.set_zombie_targets()
@@ -58,7 +60,7 @@ class GameState:
                     # Don't need to check anything else
                     zombie[6] -= 1
                 else:
-                    ash_distance = round(math.sqrt(get_distance(self.ash_pos - zombie[0])))
+                    ash_distance = zombie[7]
                     if target_human:
                         # Check if Ash is closer
                         # print('Ash distance : ' + str(ash_distance), file=sys.stderr, flush=True)
@@ -72,7 +74,7 @@ class GameState:
                             # print("Hi", ash_distance, zombie[6])
                     else:
                         # Scan through all possible targets including Ash
-                        best_human_dist = ash_distance**2
+                        best_human_dist = ash_distance
                         best_human = None
                         for human in self.humans:
                             distance = get_distance(zombie[0] - human)
@@ -109,8 +111,7 @@ class GameState:
         self.set_zombie_targets()
         for zombie in self.zombies:
             if zombie is not None:
-                zombie[0][0] += zombie[3][0]
-                zombie[0][1] += zombie[3][1]
+                zombie[0] = np.add(zombie[0], zombie[3])
                 zombie[4] -= 400
 
     def update(self, move):
@@ -125,15 +126,17 @@ class GameState:
         zombies_killed = 0
         for i in range(len(self.zombies)):
             if self.zombies[i] is not None:
-                if get_distance(self.ash_pos - self.zombies[i][0]) < 4000000:
+                ash_distance = get_distance(self.ash_pos - self.zombies[i][0])
+                self.zombies[i][7] = ash_distance
+                if ash_distance < 4000000:
                     self.zombies[i] = None
                     zombies_killed += 1
         #self.zombies[:] = (x for x in self.zombies if get_distance(self.ash_pos - x[0]) > 4000000)
         #zombies_killed = current_num_zombies - len(self.zombies)
         score += humans_alive_score * sum(FIBBONACCI_SEQUENCE[:zombies_killed])
 
-        for zombie in self.zombies:
-            if zombie is not None and not zombie[2] and zombie[4] < 400 and zombie[1] is not None:
+        for zombie in filter(None, self.zombies):
+            if not zombie[2] and zombie[4] < 400 and zombie[1] is not None:
                 # if zombie[1] is None:
                     # print('Zombie killing human ' + str(zombie[1]), file=sys.stderr, flush=True)
                 zombie[0] = zombie[1]
@@ -161,9 +164,8 @@ def score_moves(game_state_pkl, moves):
     return score
 
 
-GENE_LENGTH = 20
-POPULATION_SIZE = 10
-GENERATIONS = 10
+GENE_LENGTH = 10
+POPULATION_SIZE = 20
 
 
 def create_population(steps):
@@ -186,9 +188,12 @@ def create_population(steps):
     return population
 
 
-def genetic_algorithm(steps, game_state):
+def genetic_algorithm(steps, game_state, max_time_seconds):
     # Store original settings
     game_state_pkl = pickle.dumps(game_state)
+
+    # Record start time
+    start_time = time.time()
 
     population = create_population(steps)
     scored_population = []
@@ -196,31 +201,45 @@ def genetic_algorithm(steps, game_state):
         scored_population.append([moves, score_moves(game_state_pkl, moves)])
     scored_population.sort(key=lambda x: x[1], reverse=True)
     scored_population = scored_population[:POPULATION_SIZE + 1]
-    # print(scored_population, file=sys.stderr, flush=True)
+    #print(scored_population, file=sys.stderr, flush=True)
+    # print([x[1] for x in scored_population], file=sys.stderr, flush=True)
     # print('Best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
-    for i in range(GENERATIONS):
+    generation = 0
+    average_generation_time = 0
+    #while max_time_seconds - time.time() + start_time > 2 * average_generation_time:
+    while generation < 20: # todo
         for j in range(2, POPULATION_SIZE):
             parents = random.sample([l[0] for l in scored_population[:j]], 2)
-            new_moves = []
+            child_moves_breed = []
+            child_moves_splice = []
+            splice_point = random.randint(0, GENE_LENGTH)
             for move in range(GENE_LENGTH):
                 factor = 1.2 * random.random() - 0.1
-                # new_move = np.array(
-                #     [min(1000, max(-1000, parents[0][move][k] * factor + parents[1][move][k] * (1 - factor) + random.randint(-50, 50))) for k in
-                #      range(2)], dtype=int)
                 new_move = np.array((min(1000, max(-1000, parents[0][move][0] * factor + parents[1][move][0] * (1 - factor) + random.randint(-50, 50))),
                                      min(1000, max(-1000, parents[0][move][0] * factor + parents[1][move][0] * (1 - factor) + random.randint(-50, 50)))), dtype=int)
-                new_moves.append(new_move)
-            scored_population.append([new_moves, score_moves(game_state_pkl, new_moves)])
+                child_moves_breed.append(new_move)
+                if move < splice_point:
+                    child_moves_splice.append(np.array((parents[0][move][0], parents[0][move][1])))
+                else:
+                    child_moves_splice.append(np.array((parents[1][move][0], parents[1][move][1])))
+            scored_population.append([child_moves_breed, score_moves(game_state_pkl, child_moves_breed)])
+            scored_population.append([child_moves_splice, score_moves(game_state_pkl, child_moves_splice)])
         scored_population.sort(key=lambda x: x[1], reverse=True)
         scored_population = scored_population[:POPULATION_SIZE + 1]
-        # print(scored_population[0][1], scored_population[0][0], file=sys.stderr, flush=True)
-        # print('Best score generation : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
+        #print(scored_population[0][1], scored_population[0][0], file=sys.stderr, flush=True)
+        #print('Best score generation : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
+        generation += 1
+        average_generation_time = (time.time() - start_time) / generation
+        # print(generation, average_generation_time, time.time() - start_time, file=sys.stderr, flush=True)
 
-    print('Final best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
-    print('Steps : ' + str(scored_population[0][0]), file=sys.stderr, flush=True)
+    #print('Final best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
+    #print('Steps : ' + str(scored_population[0][0]), file=sys.stderr, flush=True)
     return scored_population[0][0]
 
-
+first_go = True
+last_time = None
+start_time = None
+initialized = False
 if __name__ == "__main__":
     # game loop
     steps = None
@@ -245,15 +264,31 @@ if __name__ == "__main__":
         # print(zombie_positions, file=sys.stderr, flush=True)
         # print(human_positions, file=sys.stderr, flush=True)
         state = GameState(ash_position, zombie_positions, human_positions)
-        steps = genetic_algorithm(steps, state)
+        steps = genetic_algorithm(steps, state, 0.09 if initialized else 0.99)
+        initialized = True
+        print("Steps : " + str(steps), file=sys.stderr, flush=True)
         move = steps[0]
-        score = state.update(move)
-        if score > 0:
-            steps = None
+        #score = state.update(move)
+        #if score > 0:
+        #    steps = None
         #if len(state.zombies) > 0:
             #print(state.zombies[0], file=sys.stderr, flush=True)
-        print("Steps : " + str(steps), file=sys.stderr, flush=True)
-        print('Score : ' + str(score), file=sys.stderr, flush=True)
+        #print("Steps : " + str(steps), file=sys.stderr, flush=True)
+        #print('Score : ' + str(score), file=sys.stderr, flush=True)
+
+
+        '''
+        if first_go:
+            while True:
+                ms = time.time() * 1000.0
+                if start_time is None:
+                    start_time = ms
+                    last_time = ms
+                elif ms - last_time > 10:
+                    print(ms - start_time, file=sys.stderr, flush=True)
+                    last_time = ms
+        first_go = False
+        '''
 
         print(min(16000, max(0, ash_x + move[0])), min(9000, max(0, ash_y + move[1])))
         # To debug: print("Debug messages...", file=sys.stderr, flush=True)
