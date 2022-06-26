@@ -42,6 +42,7 @@ class GameState:
             self.zombies.append([zombies[i], None, False, None, -1, i, 0, get_distance(ash_pos - zombies[i])])
         self.humans = humans
         self.live_humans = len(humans)
+        self.live_zombies = len(zombies)
         self.set_zombie_targets()
 
     def set_zombie_targets(self):
@@ -131,6 +132,7 @@ class GameState:
                 if ash_distance < 4000000:
                     self.zombies[i] = None
                     zombies_killed += 1
+                    self.live_zombies -= 1
         #self.zombies[:] = (x for x in self.zombies if get_distance(self.ash_pos - x[0]) > 4000000)
         #zombies_killed = current_num_zombies - len(self.zombies)
         score += humans_alive_score * sum(FIBBONACCI_SEQUENCE[:zombies_killed])
@@ -159,31 +161,33 @@ def score_moves(game_state_pkl, moves):
     #print(state.zombies)
     for move in moves:
         score += state.update(move)
-        if len(state.humans) == 0 or len(state.zombies) == 0:
+        if state.live_humans == 0:
+            score = 0
+            break
+        if state.live_zombies == 0:
             break
     return score
 
 
-GENE_LENGTH = 10
+GENE_LENGTH = 20
 POPULATION_SIZE = 20
 
 
 def create_population(steps):
     population = []
-    if steps is not None:
-        for j in range(POPULATION_SIZE):
+    for x_step in range(-1000, 1001, 250):
+        for y_step in range(-1000, 1001, 250):
             moves = []
-            for i in range(1, GENE_LENGTH):
-                moves.append(np.array([max(-1000, min(1000, steps[i][k] + random.randint(-50, 50))) for k in range(2)]))
-            moves.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
+            for i in range(GENE_LENGTH):
+                moves.append(np.array((x_step, y_step)))
             population.append(moves)
-    else:
-        for x_step in range(-1000, 1001, 250):
-            for y_step in range(-1000, 1001, 250):
-                moves = []
-                for i in range(GENE_LENGTH):
-                    moves.append(np.array((x_step, y_step)))
-                population.append(moves)
+    if steps is not None:
+        # Add existing steps to the population
+        moves = []
+        for i in range(1, GENE_LENGTH):
+            moves.append(np.array([max(-1000, min(1000, steps[i][k] + random.randint(-50, 50))) for k in range(2)]))
+        moves.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
+        population.append(moves)
 
     return population
 
@@ -206,8 +210,8 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
     # print('Best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
     generation = 0
     average_generation_time = 0
-    #while max_time_seconds - time.time() + start_time > 2 * average_generation_time:
-    while generation < 20: # todo
+    while max_time_seconds - time.time() + start_time > 2 * average_generation_time: # todo comment out line below for speed test
+    #while generation < 20: # todo
         for j in range(2, POPULATION_SIZE):
             parents = random.sample([l[0] for l in scored_population[:j]], 2)
             child_moves_breed = []
@@ -230,6 +234,7 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
         #print('Best score generation : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
         generation += 1
         average_generation_time = (time.time() - start_time) / generation
+        print([x[1] for x in scored_population], file=sys.stderr, flush=True)
         # print(generation, average_generation_time, time.time() - start_time, file=sys.stderr, flush=True)
 
     #print('Final best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
@@ -266,7 +271,7 @@ if __name__ == "__main__":
         state = GameState(ash_position, zombie_positions, human_positions)
         steps = genetic_algorithm(steps, state, 0.09 if initialized else 0.99)
         initialized = True
-        print("Steps : " + str(steps), file=sys.stderr, flush=True)
+        # print("Steps : " + str(steps), file=sys.stderr, flush=True)
         move = steps[0]
         #score = state.update(move)
         #if score > 0:
