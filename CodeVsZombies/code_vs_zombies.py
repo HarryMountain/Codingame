@@ -234,7 +234,7 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
         #print('Best score generation : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
         generation += 1
         average_generation_time = (time.time() - start_time) / generation
-        print([x[1] for x in scored_population], file=sys.stderr, flush=True)
+        # print([x[1] for x in scored_population], file=sys.stderr, flush=True)
         # print(generation, average_generation_time, time.time() - start_time, file=sys.stderr, flush=True)
 
     #print('Final best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
