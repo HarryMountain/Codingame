@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 from CodeVsZombies.code_vs_zombies import GameState, genetic_algorithm
+#from CodeVsZombies.code_vs_zombies_old import GameState, genetic_algorithm
 
 
 class TestCodeVsZombies(unittest.TestCase):
