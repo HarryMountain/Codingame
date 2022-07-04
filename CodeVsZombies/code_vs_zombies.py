@@ -17,7 +17,7 @@ for i in range(100):
 
 def get_distance(thing1, thing2):
     # return round(vector.dot(vector))
-    return (thing1.x - thing2.x)**2 + (thing1.y - thing2.y)**2
+    return round(math.sqrt((thing1.x - thing2.x)**2 + (thing1.y - thing2.y)**2))
 
 
 class Zombie:
@@ -93,16 +93,17 @@ class GameState:
                         best_human_dist = ash_distance
                         best_human = None
                         for human in self.humans:
-                            distance = get_distance(zombie, human)
-                            if distance < best_human_dist:
-                                best_human = human
-                                best_human_dist = distance
+                            if human.is_alive:
+                                distance = get_distance(zombie, human)
+                                if distance < best_human_dist:
+                                    best_human = human
+                                    best_human_dist = distance
                         if best_human is not None:
                             # Switch Zombie to target this human
                             zombie.target_id = best_human.id
                             zombie.target_x = best_human.x
                             zombie.target_y = best_human.y
-                            zombie.distance_to_target = round(math.sqrt(best_human_dist))
+                            zombie.distance_to_target = best_human_dist
                         else:
                             # Switch Zombie to target Ash
                             zombie.target_id = TARGET_ASH
@@ -140,7 +141,7 @@ class GameState:
             if zombie.is_alive:
                 ash_distance = get_distance(self.ash, zombie)
                 zombie.distance_to_ash = ash_distance
-                if ash_distance < 4000000:
+                if ash_distance < 2000:
                     zombie.is_alive = False
                     zombies_killed += 1
                     self.live_zombies -= 1
