@@ -33,10 +33,8 @@ class Zombie:
         self.is_alive = True
         self.x = zombie[0]
         self.y = zombie[1]
-        # self.has_target = False
         self.target_x = None
         self.target_y = None
-        # self.target_ash = False
         self.move_x = None
         self.move_y = None
         self.count_to_ash = 0
@@ -178,51 +176,86 @@ class GameState:
         return score
 
 
-first = True
-def score_moves(game_state_pkl, moves, output):
-    global first
+def score_moves(game_state_pkl, moves):
     state = pickle.loads(game_state_pkl)
     score = 0
 
-    # if first:
-    #     print([(x.x, x.y) for x in state.zombies])
-    #     print((state.ash.x, state.ash.y))
-
     for move in moves:
         score += state.update(move)
-        # if first:
-        #     print([x.count_to_ash for x in state.zombies])
         if state.live_humans == 0:
             return 0
         if state.live_zombies == 0:
             break
-    score += state.live_humans * state.live_zombies * 50
-    # if output:
-    #   print(state.live_humans, state.live_zombies, score, file=sys.stderr, flush=True)
-    first = False
+    # score += state.live_humans * 250
+    # score += state.live_zombies * 25
     return score
 
 
-GENE_LENGTH = 10
+GENE_LENGTH = 20
 POPULATION_SIZE = 10
 
 
-def create_population(last_steps):
+def create_population(last_steps, state):
     population = []
-    for x_step in range(-1000, 1001, 250):
-        for y_step in range(-1000, 1001, 250):
-            moves = []
-            for i in range(GENE_LENGTH):
-                moves.append(np.array((x_step, y_step)))
-            population.append(moves)
+    # If we have some initial steps, add these
     if last_steps is not None:
-        # Add existing steps to the population
         moves = []
         for i in range(1, GENE_LENGTH):
             moves.append(np.array([last_steps[i][k] for k in range(2)]))
         moves.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
         population.append(moves)
 
+    # Get lost of possibilities
+    possible_steps = []
+    for human in state.humans:
+        possible_steps.append(np.array((human.x - state.ash.x, human.y - state.ash.y)))
+        #possible_steps.append(np.array(((human.x - state.ash.x) // 2, (human.y - state.ash.y) // 2)))
+        #possible_steps.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
+    #possible_steps.append(np.array((0, 0)))
+
+    # Add a path that goes to this human and continues and another path that stops
+    zero_move = np.array((0, 0))
+    for human in state.humans:
+        move = np.array((human.x - state.ash.x, human.y - state.ash.y))
+        possible_steps.append(move)
+        moves_continue = []
+        moves_stop = []
+        steps_to_stop = get_distance(human, state.ash) // 400
+        for i in range(GENE_LENGTH):
+            moves_continue.append(move)
+            moves_stop.append(move if i <= steps_to_stop else np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
+        #population.append(moves_continue)
+        #population.append(moves_stop)
+
+    # Add random paths
+    for i in range(POPULATION_SIZE):
+        moves = []
+        for j in range(GENE_LENGTH):
+            moves.append(random.choice(possible_steps))
+        population.append(moves)
+
+    # Add paths in each direction
+    for x_step in range(-1000, 1001, 500):
+        for y_step in range(-1000, 1001, 500):
+            moves = []
+            for i in range(GENE_LENGTH):
+                moves.append(np.array((x_step, y_step)))
+            population.append(moves)
+    """
+    # Target each human
+    for human in state.humans:
+        moves = []
+        for i in range(GENE_LENGTH):
+            moves.append(np.array((human.x - state.ash.x, human.y - state.ash.y)))
+        population.append(moves)
+
+    # If the population is not big enough, add random paths
+    for i in range(POPULATION_SIZE * 2 - len(population)):
+        moves = []
+        for i in range(GENE_LENGTH):
+            moves.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
+        population.append(moves)
+    """
     return population
 
 
@@ -232,12 +265,13 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
 
     # Record start time
     start_time = time.time()
-    print(time.time() - start_time, file=sys.stderr, flush=True)
+    # print(time.time() - start_time, file=sys.stderr, flush=True)
 
-    population = create_population(steps)
+    population = create_population(steps, game_state)
+    print(len(population), file=sys.stderr, flush=True)
     scored_population = []
     for moves in population:
-        scored_population.append([moves, score_moves(game_state_pkl, moves, False)])
+        scored_population.append([moves, score_moves(game_state_pkl, moves)])
     scored_population.sort(key=lambda x: x[1], reverse=True)
     scored_population = scored_population[:POPULATION_SIZE + 1]
     # print(scored_population, file=sys.stderr, flush=True)
@@ -246,8 +280,8 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
     generation = 0
     average_generation_time = time.time() - start_time
     print(time.time() - start_time, file=sys.stderr, flush=True)
-    while max_time_seconds - time.time() + start_time > average_generation_time: # todo comment out line below for speed test
-    # while generation < 20: # todo
+    # while max_time_seconds - time.time() + start_time > average_generation_time: # todo comment out line below for speed test
+    while generation < 20: # todo
         time_remaining = max_time_seconds - time.time() + start_time
         # print(average_generation_time, time_remaining, generation,  file=sys.stderr, flush=True)
         for j in range(2, POPULATION_SIZE):
@@ -264,21 +298,18 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
                     child_moves_splice.append(np.array((parents[0][move][0], parents[0][move][1])))
                 else:
                     child_moves_splice.append(np.array((parents[1][move][0], parents[1][move][1])))
-            scored_population.append([child_moves_breed, score_moves(game_state_pkl, child_moves_breed, False)])
-            scored_population.append([child_moves_splice, score_moves(game_state_pkl, child_moves_splice, False)])
+            scored_population.append([child_moves_breed, score_moves(game_state_pkl, child_moves_breed)])
+            scored_population.append([child_moves_splice, score_moves(game_state_pkl, child_moves_splice)])
         scored_population.sort(key=lambda x: x[1], reverse=True)
         scored_population = scored_population[:POPULATION_SIZE + 1]
         generation += 1
-        # print(generation, file=sys.stderr, flush=True)
         average_generation_time = (time.time() - start_time) / generation
-        # print([x[1] for x in scored_population], file=sys.stderr, flush=True)
-        score_moves(game_state_pkl, scored_population[0][0], True)
+        #print([x[1] for x in scored_population], file=sys.stderr, flush=True)
         # print(generation, average_generation_time, time.time() - start_time, file=sys.stderr, flush=True)
+    print(generation, scored_population[0][1], file=sys.stderr, flush=True)
     return scored_population[0][0]
 
-# first_go = True
-# last_time = None
-# start_time = None
+
 initialized = False
 if __name__ == "__main__":
     # game loop
@@ -303,12 +334,9 @@ if __name__ == "__main__":
         print(ash_position, file=sys.stderr, flush=True)
         print(zombie_positions, file=sys.stderr, flush=True)
         print(human_positions, file=sys.stderr, flush=True)
+
         state = GameState(ash_position, zombie_positions, human_positions)
-        # if not initialized:
         steps = genetic_algorithm(steps, state, 0.095 if initialized else 0.995)
         initialized = True
-        # print("Steps : " + str(steps), file=sys.stderr, flush=True)
         move = steps[0]
-        # move = steps.pop(0)
         print(min(16000, max(0, ash_x + move[0])), min(9000, max(0, ash_y + move[1])))
-        # To debug: print("Debug messages...", file=sys.stderr, flush=True)
