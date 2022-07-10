@@ -2,7 +2,6 @@ import unittest
 
 import numpy as np
 from CodeVsZombies.code_vs_zombies import GameState, genetic_algorithm
-#from CodeVsZombies.code_vs_zombies_old import GameState, genetic_algorithm
 
 
 class TestCodeVsZombies(unittest.TestCase):
@@ -46,6 +45,21 @@ class TestCodeVsZombies(unittest.TestCase):
             score = state.update(steps[i])
             self.assertEqual(expected_scores[i], score)
 
+    def test_case8_rows_to_defend_redux(self):
+        ash_position = np.array((0, 4000))
+        zombie_positions = [np.array((3000, 1000)), np.array((3000, 8000)), np.array((4000, 1000)), np.array((4000, 8000)), np.array((5000, 1000)),
+                            np.array((5000, 8000)), np.array((7000, 1000)), np.array((7000, 8000)), np.array((9000, 1000)), np.array((9000, 8000)),
+                            np.array((11000, 1000)), np.array((11000, 8000)), np.array((13000, 1000)), np.array((13000, 8000)), np.array((14000, 1000)),
+                            np.array((14000, 8000)), np.array((14500, 1000)), np.array((14500, 8000)), np.array((15000, 1000)), np.array((15000, 8000))]
+        human_positions = [np.array((0, 1000)), np.array((0, 8000))]
+        expected_scores = [0, 0, 0, 0, 0, 40, 0, 0, 0, 0]
+
+        state = GameState(ash_position, zombie_positions, human_positions)
+        steps = genetic_algorithm(None, state, 1)
+        for i in range(10):
+            state = GameState(ash_position, zombie_positions, human_positions)
+            genetic_algorithm(None, state, 1)
+
     def test_mass_zombie_attack(self):
         ash_position = np.array((7992, 8304))
         zombie_positions = [np.array((3996, 4152)), np.array((3996, 4844)), np.array((3996, 7612)), np.array((5328, 1384)),
@@ -56,7 +70,7 @@ class TestCodeVsZombies(unittest.TestCase):
 
         for i in range(20):
             state = GameState(ash_position, zombie_positions, human_positions)
-            steps = genetic_algorithm(None, state, 1)
+            genetic_algorithm(None, state, 1)
             #self.assertEqual(expected_scores[i], score)
 
 
