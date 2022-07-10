@@ -43,6 +43,7 @@ class Zombie:
         self.distance_to_ash = -1
         self.distance_to_target = -1
         self.target_id = TARGET_NONE
+        self.count_to_human = 0
 
 
 class Human:
@@ -78,56 +79,65 @@ class GameState:
 
                 target_ash = zombie.target_id == TARGET_ASH
                 target_human = zombie.target_id > -1
+                set_new_target = False
+                set_target_ash = False
                 recalc_move_vector = False
+                ash_distance = zombie.distance_to_ash
 
-                if not target_ash and zombie.count_to_ash > 0:
-                    # Don't need to check anything else
-                    zombie.count_to_ash -= 1
-                else:
-                    ash_distance = zombie.distance_to_ash
-                    if target_human:
+                if target_human:
+                    if zombie.count_to_ash > 0:
+                        # Don't need to check anything else
+                        zombie.count_to_ash -= 1
+                    else:
                         # Check if Ash is closer
                         if ash_distance < zombie.distance_to_target:
-                            zombie.target_id = TARGET_ASH
-                            zombie.target_x = self.ash.x
-                            zombie.target_y = self.ash.y
-                            zombie.distance_to_target = ash_distance
-                            recalc_move_vector = True
+                            set_target_ash = True
                         else:
-                            zombie.count_to_ash = min(zombie.distance_to_target, ash_distance - zombie.distance_to_target) // 1400
+                            zombie.count_to_ash = max(0, ash_distance - zombie.distance_to_target) // 1400
+                elif target_ash:
+                    if zombie.count_to_human > 0:
+                        zombie.count_to_human -= 1
                     else:
-                        # Scan through all possible targets including Ash
-                        best_human_dist = ash_distance
-                        best_human = None
-                        for human in self.humans:
-                            if human.is_alive:
-                                distance = get_distance2(zombie, human)
-                                if distance < best_human_dist:
-                                    best_human = human
-                                    best_human_dist = distance
-                        if best_human is not None:
-                            # Switch Zombie to target this human
-                            zombie.target_id = best_human.id
-                            zombie.target_x = best_human.x
-                            zombie.target_y = best_human.y
-                            zombie.distance_to_target = best_human_dist
-                        else:
-                            # Switch Zombie to target Ash
-                            zombie.target_id = TARGET_ASH
-                            zombie.target_x = self.ash.x
-                            zombie.target_y = self.ash.y
-                            zombie.distance_to_target = ash_distance
-                        zombie.count_to_ash = min(zombie.distance_to_target, ash_distance - zombie.distance_to_target) // 1400
+                        set_new_target = True
+                else:
+                    set_new_target = True
+                if set_new_target:
+                    # Scan through all possible targets including Ash
+                    best_human_dist = ash_distance
+                    best_human = None
+                    for human in self.humans:
+                        if human.is_alive:
+                            distance = get_distance2(zombie, human)
+                            if distance < best_human_dist:
+                                best_human = human
+                                best_human_dist = distance
+                    if best_human is not None:
+                        # Switch Zombie to target this human
+                        zombie.target_id = best_human.id
+                        zombie.target_x = best_human.x
+                        zombie.target_y = best_human.y
+                        zombie.distance_to_target = best_human_dist
+                        zombie.count_to_ash = max(0, ash_distance - zombie.distance_to_target) // 1400
                         recalc_move_vector = True
+                    else:
+                        # Switch Zombie to target Ash
+                        set_target_ash = True
 
-                    # Set move vector if needed
-                    if recalc_move_vector:
-                        if zombie.distance_to_target > 0:
-                            zombie.move_x = round((zombie.target_x - zombie.x) * 400 / zombie.distance_to_target)
-                            zombie.move_y = round((zombie.target_y - zombie.y) * 400 / zombie.distance_to_target)
-                        else:
-                            zombie.move_x = 0
-                            zombie.move_y = 0
+                if set_target_ash:
+                    zombie.target_id = TARGET_ASH
+                    zombie.target_x = self.ash.x
+                    zombie.target_y = self.ash.y
+                    zombie.distance_to_target = ash_distance
+                    zombie.count_to_human = max(0, zombie.distance_to_target - zombie.distance_to_ash) // 600
+
+                # Set move vector if needed
+                if recalc_move_vector or zombie.target_id == TARGET_ASH:
+                    if zombie.distance_to_target > 0:
+                        zombie.move_x = round((zombie.target_x - zombie.x) * 400 / zombie.distance_to_target)
+                        zombie.move_y = round((zombie.target_y - zombie.y) * 400 / zombie.distance_to_target)
+                    else:
+                        zombie.move_x = 0
+                        zombie.move_y = 0
 
     def move_zombies(self):
         self.set_zombie_targets()
