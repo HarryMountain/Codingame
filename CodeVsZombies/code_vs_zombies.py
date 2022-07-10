@@ -42,6 +42,7 @@ class Zombie:
         self.distance_to_target = -1
         self.target_id = TARGET_NONE
         self.count_to_human = 0
+        self.count_to_ash_kill = 0
 
 
 class Human:
@@ -101,7 +102,7 @@ class GameState:
                     set_new_target = True
                 if set_new_target:
                     # Scan through all possible targets including Ash
-                    best_human_dist = ash_distance
+                    best_human_dist = 9999999999
                     best_human = None
                     for human in self.humans:
                         if human.is_alive:
@@ -109,13 +110,14 @@ class GameState:
                             if distance < best_human_dist:
                                 best_human = human
                                 best_human_dist = distance
+                    zombie.distance_to_target = best_human_dist
                     if best_human is not None:
                         # Switch Zombie to target this human
                         zombie.target_id = best_human.id
                         zombie.target_x = best_human.x
                         zombie.target_y = best_human.y
-                        zombie.distance_to_target = best_human_dist
                         zombie.count_to_ash = max(0, ash_distance - zombie.distance_to_target) // 1400
+                        # print('Ash : ' + str(zombie.count_to_ash))
                         recalc_move_vector = True
                     else:
                         # Switch Zombie to target Ash
@@ -125,8 +127,9 @@ class GameState:
                     zombie.target_id = TARGET_ASH
                     zombie.target_x = self.ash.x
                     zombie.target_y = self.ash.y
-                    zombie.distance_to_target = ash_distance
                     zombie.count_to_human = max(0, zombie.distance_to_target - zombie.distance_to_ash) // 600
+                    # print('Human : ' + str(zombie.count_to_human))
+                    zombie.distance_to_target = ash_distance
 
                 # Set move vector if needed
                 if recalc_move_vector or zombie.target_id == TARGET_ASH:
@@ -153,13 +156,18 @@ class GameState:
         humans_alive_score = (self.live_humans ** 2) * 10
         zombies_killed = 0
         for zombie in self.zombies:
-            if zombie.is_alive and zombie.count_to_ash < 2:
-                ash_distance = get_distance3(self.ash, zombie)
-                zombie.distance_to_ash = ash_distance
-                if ash_distance < 2000:
-                    zombie.is_alive = False
-                    zombies_killed += 1
-                    self.live_zombies -= 1
+            if zombie.is_alive:
+                if zombie.count_to_ash_kill > 1:
+                    zombie.count_to_ash_kill -= 1
+                else:
+                    ash_distance = get_distance3(self.ash, zombie)
+                    zombie.distance_to_ash = ash_distance
+                    if ash_distance < 2000:
+                        zombie.is_alive = False
+                        zombies_killed += 1
+                        self.live_zombies -= 1
+                    else:
+                        zombie.count_to_ash_kill = ash_distance // 1400
         score += humans_alive_score * sum(FIBBONACCI_SEQUENCE[:zombies_killed])
 
         for zombie in self.zombies:
@@ -268,7 +276,7 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
     # print(time.time() - start_time, file=sys.stderr, flush=True)
 
     population = create_population(steps, game_state)
-    print(len(population), file=sys.stderr, flush=True)
+    # print(len(population), file=sys.stderr, flush=True)
     scored_population = []
     for moves in population:
         scored_population.append([moves, score_moves(game_state_pkl, moves)])
@@ -279,9 +287,9 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
     # print('Best score : ' + str(scored_population[0][1]), file=sys.stderr, flush=True)
     generation = 0
     average_generation_time = time.time() - start_time
-    print(time.time() - start_time, file=sys.stderr, flush=True)
-    # while max_time_seconds - time.time() + start_time > average_generation_time: # todo comment out line below for speed test
-    while generation < 20: # todo
+    # print(time.time() - start_time, file=sys.stderr, flush=True)
+    while max_time_seconds - time.time() + start_time > average_generation_time: # todo comment out line below for speed test
+    # while generation < 20: # todo
         time_remaining = max_time_seconds - time.time() + start_time
         # print(average_generation_time, time_remaining, generation,  file=sys.stderr, flush=True)
         for j in range(2, POPULATION_SIZE):
@@ -304,9 +312,9 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
         scored_population = scored_population[:POPULATION_SIZE + 1]
         generation += 1
         average_generation_time = (time.time() - start_time) / generation
-        #print([x[1] for x in scored_population], file=sys.stderr, flush=True)
+        # print([x[1] for x in scored_population], file=sys.stderr, flush=True)
         # print(generation, average_generation_time, time.time() - start_time, file=sys.stderr, flush=True)
-    print(generation, scored_population[0][1], file=sys.stderr, flush=True)
+    # print(generation, scored_population[0][1], file=sys.stderr, flush=True)
     return scored_population[0][0]
 
 
