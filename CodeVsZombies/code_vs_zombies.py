@@ -27,6 +27,7 @@ def get_distance3(thing1, thing2):
     # return round(vector.dot(vector))
     return round(math.sqrt((thing1.x - thing2.x)**2 + (thing1.y - thing2.y)**2))
 
+
 class Zombie:
     def __init__(self, id, zombie):
         self.id = id
@@ -42,7 +43,7 @@ class Zombie:
         self.distance_to_target = -1
         self.target_id = TARGET_NONE
         self.count_to_human = 0
-        self.count_to_ash_kill = 0
+        self.count_to_ash_kill = 0 # todo : Run split second reflex - problem in sim logic
 
 
 class Human:
@@ -207,22 +208,31 @@ def create_population(last_steps, state):
     population = []
     # If we have some initial steps, add these
     if last_steps is not None:
-        moves = []
-        for i in range(1, GENE_LENGTH):
-            moves.append(np.array([last_steps[i][k] for k in range(2)]))
-        moves.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
-        population.append(moves)
+        for scenario in last_steps:
+            moves = []
+            for i in range(1, GENE_LENGTH):
+                moves.append(np.array([scenario[0][i][k] for k in range(2)]))
+            moves.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
+            population.append(moves)
 
-    # Get lost of possibilities
+    # Add paths in each direction
+    for x_step in range(-1000, 1001, 500):
+        for y_step in range(-1000, 1001, 500):
+            moves = []
+            for i in range(GENE_LENGTH):
+                moves.append(np.array((x_step, y_step)))
+            population.append(moves)
+    if last_steps is not None:
+        return population
+
+    # Get list of possibilities
     possible_steps = []
     for human in state.humans:
         possible_steps.append(np.array((human.x - state.ash.x, human.y - state.ash.y)))
-        #possible_steps.append(np.array(((human.x - state.ash.x) // 2, (human.y - state.ash.y) // 2)))
-        #possible_steps.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
-    #possible_steps.append(np.array((0, 0)))
+    zero_move = np.array((0, 0))
+    possible_steps.append(zero_move)
 
     # Add a path that goes to this human and continues and another path that stops
-    zero_move = np.array((0, 0))
     for human in state.humans:
         move = np.array((human.x - state.ash.x, human.y - state.ash.y))
         possible_steps.append(move)
@@ -232,8 +242,8 @@ def create_population(last_steps, state):
         for i in range(GENE_LENGTH):
             moves_continue.append(move)
             moves_stop.append(move if i <= steps_to_stop else np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
-        #population.append(moves_continue)
-        #population.append(moves_stop)
+        population.append(moves_continue)
+        population.append(moves_stop)
 
     # Add random paths
     for i in range(POPULATION_SIZE):
@@ -242,28 +252,6 @@ def create_population(last_steps, state):
             moves.append(random.choice(possible_steps))
         population.append(moves)
 
-    # Add paths in each direction
-    for x_step in range(-1000, 1001, 500):
-        for y_step in range(-1000, 1001, 500):
-            moves = []
-            for i in range(GENE_LENGTH):
-                moves.append(np.array((x_step, y_step)))
-            population.append(moves)
-    """
-    # Target each human
-    for human in state.humans:
-        moves = []
-        for i in range(GENE_LENGTH):
-            moves.append(np.array((human.x - state.ash.x, human.y - state.ash.y)))
-        population.append(moves)
-
-    # If the population is not big enough, add random paths
-    for i in range(POPULATION_SIZE * 2 - len(population)):
-        moves = []
-        for i in range(GENE_LENGTH):
-            moves.append(np.array((random.randint(-1000, 1000), random.randint(-1000, 1000))))
-        population.append(moves)
-    """
     return population
 
 
@@ -315,7 +303,7 @@ def genetic_algorithm(steps, game_state, max_time_seconds):
         # print([x[1] for x in scored_population], file=sys.stderr, flush=True)
         # print(generation, average_generation_time, time.time() - start_time, file=sys.stderr, flush=True)
     # print(generation, scored_population[0][1], file=sys.stderr, flush=True)
-    return scored_population[0][0]
+    return scored_population
 
 
 initialized = False
@@ -339,12 +327,12 @@ if __name__ == "__main__":
             zombie_id, zombie_x, zombie_y, zombie_xnext, zombie_ynext = [int(j) for j in input().split()]
             zombies.append([zombie_id, zombie_x, zombie_y, zombie_xnext, zombie_ynext])
             zombie_positions.append(np.array((zombie_x, zombie_y)))
-        print(ash_position, file=sys.stderr, flush=True)
-        print(zombie_positions, file=sys.stderr, flush=True)
-        print(human_positions, file=sys.stderr, flush=True)
+        # print(ash_position, file=sys.stderr, flush=True)
+        # print(zombie_positions, file=sys.stderr, flush=True)
+        # print(human_positions, file=sys.stderr, flush=True)
 
         state = GameState(ash_position, zombie_positions, human_positions)
         steps = genetic_algorithm(steps, state, 0.095 if initialized else 0.995)
         initialized = True
-        move = steps[0]
+        move = steps[0][0][0]
         print(min(16000, max(0, ash_x + move[0])), min(9000, max(0, ash_y + move[1])))
