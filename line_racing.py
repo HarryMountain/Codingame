@@ -26,6 +26,8 @@ for x in range(MAX_X):
 
 
 def flood_fill(grid, n, p, player_order):
+    touched_other = [False] * n
+    dead = []
     done = False
     last_visited = {}
     for player in player_order:
@@ -37,13 +39,18 @@ def flood_fill(grid, n, p, player_order):
             new_visited = []
             for cell in last_visited[player]:
                 for neighbour in neighbours[cell]:
-                    if grid[neighbour[0], neighbour[1]] == 0:
+                    value = grid[neighbour[0], neighbour[1]]
+                    if value == 0 or value in dead:
                         grid[neighbour[0], neighbour[1]] = player
                         new_visited.append(neighbour)
                         done = False
+                    elif value != player:
+                        touched_other[player - 1] = True
             if player == p + 1 and len(new_visited) > 0:
                 index += 1
             last_visited[player] = new_visited
+            if len(new_visited) == 0 and not touched_other[player - 1]:
+                dead.append(player)
         # print(np.count_nonzero(grid  == 1), np.count_nonzero(grid  == 2), np.count_nonzero(grid  == 0), file=sys.stderr, flush=True)
     # print(grid, file=sys.stderr, flush=True)
     score = 0
