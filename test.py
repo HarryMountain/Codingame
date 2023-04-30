@@ -1,3 +1,3 @@
-bla = [1, 2, 3, 5]
-bla.insert(-1, 4)
-print(bla)
+import math
+import numpy as np
+print(math.trunc(-1.7), math.trunc(1.7), math.trunc(-1.3))
