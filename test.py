@@ -1,3 +1,3 @@
 import math
 import numpy as np
-print(math.trunc(-1.7), math.trunc(1.7), math.trunc(-1.3))
+print(np.array([1, 1]) + [2, 2])
