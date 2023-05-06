@@ -3,6 +3,7 @@ import random
 import numpy as np
 import pygad
 from CarDriving.config import WIDTH, HEIGHT
+from CarDriving.display_race import plot_race
 from CarDriving.game import Game
 
 '''
@@ -31,7 +32,7 @@ class fitness_func:  # Solution is the inputs every game turn
 
 def fitness_func_maker(game):
     def fitness_func(_ga_instance, solution, _solution_idx):  # Solution is the inputs every game turn
-        game.run_through_game(solution)
+        game.run_through_game(solution, False)
         score = 0
         score += 100 * game.next_checkpoint
         score -= game.time
@@ -43,7 +44,7 @@ def fitness_func_maker(game):
 def fit_genetic_algorithm(game):
     fitness_function = fitness_func_maker(game)
 
-    num_generations = 50
+    num_generations = 25
     num_parents_mating = 4
 
     sol_per_pop = 8
@@ -75,7 +76,8 @@ def fit_genetic_algorithm(game):
 
     ga_instance.run()
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
-    # plot_race(checkpoints, path, inputs)
+    path, inputs = game.run_through_game(solution, True)
+    plot_race(checkpoints, path, inputs)
     print(solution)
     print(solution_fitness)
     print(solution_idx)

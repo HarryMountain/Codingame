@@ -37,20 +37,26 @@ class Game:
         self.angle = round(self.angle)
         self.hit_checkpoint()
 
-    def run_through_game(self, actions):
+    def run_through_game(self, actions, record_data):
         self.reset()
+        positions = []
+        inputs = []
         for action in actions:
-            self.apply_action(action, 100)  # TODO Use thrust in genetic algorithm as well
+            self.apply_action(action, 25)  # TODO Use thrust in genetic algorithm as well
+            if record_data:
+                positions.append(self.position)
+                inputs.append([action, 25])
+        return (positions, inputs) if record_data else None
 
     def hit_checkpoint(self):
-        checkpoint = self.checkpoints[self.next_checkpoint]
+        checkpoint = self.checkpoints[self.next_checkpoint % len(self.checkpoints)]  # TODO Stop after all checkpoints
         distance_from_checkpoint = math.sqrt((self.position[0] - checkpoint[0])**2 + (self.position[1] - checkpoint[1])**2)
         if distance_from_checkpoint <= CHECKPOINT_RADIUS:
             self.next_checkpoint += 1
 
     @staticmethod
     def get_angle(position, target):
-        facing = [position[0] - target[0], position[1] - target[1]]
+        facing = [target[0] - position[0], target[1] - position[1]]
         angle = math.atan2(facing[1], facing[0])
         return math.degrees(angle)
 
