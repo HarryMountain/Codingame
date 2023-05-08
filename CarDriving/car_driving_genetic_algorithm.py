@@ -48,7 +48,7 @@ def fit_genetic_algorithm(game):
     num_parents_mating = 4
 
     sol_per_pop = 8
-    num_genes = 600
+    num_genes = 1200
 
     init_range_low = -2
     init_range_high = 5

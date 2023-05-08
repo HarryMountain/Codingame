@@ -36,8 +36,8 @@ def plot_race(checkpoints, path, inputs):
 
     def animate(i):
         car.center = (path[i][0], path[i][1])
-        angle = int(inputs[min(i, len(inputs) - 1)][0])
-        output_text.set_text(output_template % (i, angle))
+        angle, thrust = map(int, inputs[min(i, len(inputs) - 1)])
+        output_text.set_text(output_template % (angle, thrust))
         #print([[round(x, 2) for x in nn_data[i][j]] for j in range(2)]) todo
         return checkpoint_icons[0], checkpoint_icons[1], checkpoint_icons[2], car, output_text
 

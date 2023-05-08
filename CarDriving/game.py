@@ -41,11 +41,19 @@ class Game:
         self.reset()
         positions = []
         inputs = []
+        '''
         for action in actions:
             self.apply_action(action, 25)  # TODO Use thrust in genetic algorithm as well
             if record_data:
                 positions.append(self.position)
                 inputs.append([action, 25])
+        '''
+        for i in range(0, len(actions), 2):
+            angle, thrust = actions[i], actions[i + 1]
+            self.apply_action(angle, thrust)
+            if record_data:
+                positions.append(self.position)
+                inputs.append([angle, thrust])
         return (positions, inputs) if record_data else None
 
     def hit_checkpoint(self):
