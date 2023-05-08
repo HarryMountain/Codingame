@@ -1,8 +1,13 @@
 import math
-from CarDriving.config import WIDTH, HEIGHT, CHECKPOINT_RADIUS
+import random
+
 import matplotlib.animation as animation
+import matplotlib.patches as mpatches
+import matplotlib.path as mpath
 import matplotlib.pyplot as plt
 import numpy as np
+
+from CarDriving.config import WIDTH, HEIGHT, CHECKPOINT_RADIUS
 
 TIME_PER_FRAME = 0.05
 # TIME_PER_FRAME = 1 # todo
@@ -45,9 +50,49 @@ def plot_race(checkpoints, path, inputs):
     plt.show()
 
 
+def plot_pod_paths(checkpoints, paths, pause_time):
+    plt.figure(figsize=(5, 4))
+    ax = plt.axes(xlim=(0, WIDTH), ylim=(0, HEIGHT))
+    ax.set_aspect('equal')
+    plt.gca().invert_yaxis()
+
+    checkpoint_icons = []
+    for checkpoint in checkpoints:
+        circle = plt.Circle((checkpoint[0], checkpoint[1]), CHECKPOINT_RADIUS, color='r')
+        checkpoint_icons.append(circle)
+        ax.add_patch(circle)
+    start_position = paths[0][0]
+    pod = plt.Circle((start_position[0], start_position[1]), CAR_SIZE, color='b')
+    ax.add_patch(pod)
+    for path in paths:
+        string_path = mpath.Path(path)
+        track = mpatches.PathPatch(string_path, facecolor="none", lw=2)
+        ax.add_patch(track)
+
+    plt.show(block=False)
+    plt.pause(pause_time)
+    plt.close()
+
+
 # Test display race
+'''
 if __name__ == "__main__":
     checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
     path = [[3000 + int(2000 * math.cos(i / 20)), 3000 + int(1000 * math.sin(i / 20))] for i in range(400)]
     inputs = [[12, 70] for i in range(400)]
     plot_race(checkpoints, path, inputs)
+'''
+
+# Test display all races
+if __name__ == "__main__":
+    checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
+    paths = []
+    for i in range(10):
+        path = [checkpoints[0]]
+        for j in range(300):
+            new_location = [path[-1][0] * 25 * (random.randint(-2, 2) + math.sin(i / 10 * 2 * math.pi)),
+                            path[-1][0] * 25 * (random.randint(-2, 2) + math.cos(i / 10 * 2 * math.pi))]
+            path.append(new_location)
+        paths.append(path)
+    inputs = [[12, 70] for i in range(300)]
+    plot_pod_paths(checkpoints, paths, 20)
