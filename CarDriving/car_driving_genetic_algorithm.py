@@ -34,6 +34,9 @@ def fitness_func_maker(game):
     def fitness_func(_ga_instance, solution, _solution_idx):  # Solution is the inputs every game turn
         game.run_through_game(solution, False)
         score = 0
+        distance_between_checkpoints = Game.get_pythagorean_distance(game.checkpoints[game.next_checkpoint], game.checkpoints[game.next_checkpoint - 1])
+        distance_to_next_checkpoint = Game.get_pythagorean_distance(game.position, game.checkpoints[game.next_checkpoint])
+        score += (1 - distance_to_next_checkpoint / distance_between_checkpoints) * 100
         score += 100 * game.next_checkpoint
         score -= game.time
         return score

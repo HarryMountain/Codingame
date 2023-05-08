@@ -68,6 +68,10 @@ class Game:
         angle = math.atan2(facing[1], facing[0])
         return math.degrees(angle)
 
+    @staticmethod
+    def get_pythagorean_distance(position, target):
+        return math.sqrt((target[0] - position[0])**2 + (target[1] - position[1])**2)
+
     def reset(self):
         self.position = self.starting_position
         self.angle = self.starting_angle
