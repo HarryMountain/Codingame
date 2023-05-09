@@ -28,7 +28,6 @@ class Game:
         facing_vector = [math.cos(angle_radians), math.sin(angle_radians)]
         facing_vector = np.array(facing_vector)
         facing_vector *= thrust
-        print(self.speed, facing_vector)
         self.speed += facing_vector
         self.position = self.position + self.speed
         self.speed *= 0.85
@@ -41,20 +40,15 @@ class Game:
         self.reset()
         positions = []
         inputs = []
-        '''
-        for action in actions:
-            self.apply_action(action, 25)  # TODO Use thrust in genetic algorithm as well
-            if record_data:
-                positions.append(self.position)
-                inputs.append([action, 25])
-        '''
+        checks = []
         for i in range(0, len(actions), 2):
             angle, thrust = actions[i], actions[i + 1]
             self.apply_action(angle, thrust)
             if record_data:
                 positions.append(self.position)
                 inputs.append([angle, thrust])
-        return (positions, inputs) if record_data else None
+                checks.append(self.next_checkpoint)
+        return (positions, inputs, checks) if record_data else None
 
     def hit_checkpoint(self):
         checkpoint = self.checkpoints[self.next_checkpoint % len(self.checkpoints)]  # TODO Stop after all checkpoints
@@ -71,6 +65,10 @@ class Game:
     @staticmethod
     def get_pythagorean_distance(position, target):
         return math.sqrt((target[0] - position[0])**2 + (target[1] - position[1])**2)
+
+    def convert_inputs_into_action(self, inputs):
+        actions = [(inputs[i] * 18) if i % 2 == 0 else ((inputs[i] + 1) * 100) for i in range(len(inputs))]
+        return actions
 
     def reset(self):
         self.position = self.starting_position
