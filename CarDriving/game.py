@@ -16,7 +16,7 @@ class Game:
         self.angle = starting_angle
         self.position = starting_position
         self.next_checkpoint = 1
-        self.time = 0  # todo : do something with this
+        self.time = 0
 
     def apply_action(self, rotation, thrust):
         self.angle += max(-18, min(18, rotation))
@@ -34,20 +34,24 @@ class Game:
         self.speed = np.trunc(self.speed)
         self.position = np.trunc(self.position)
         self.angle = round(self.angle)
-        self.hit_checkpoint()
+        return self.hit_checkpoint()
 
     def run_through_game(self, actions, record_data):
         self.reset()
         positions = []
         inputs = []
         checks = []
+        self.time = len(actions) // 2
         for i in range(0, len(actions), 2):
             angle, thrust = actions[i], actions[i + 1]
-            self.apply_action(angle, thrust)
+            finished = self.apply_action(angle, thrust)
             if record_data:
                 positions.append(self.position)
                 inputs.append([angle, thrust])
                 checks.append(self.next_checkpoint)
+            if finished:
+                self.time = i // 2
+                break
         return (positions, inputs, checks) if record_data else None
 
     def hit_checkpoint(self):
@@ -55,6 +59,9 @@ class Game:
         distance_from_checkpoint = math.sqrt((self.position[0] - checkpoint[0])**2 + (self.position[1] - checkpoint[1])**2)
         if distance_from_checkpoint <= CHECKPOINT_RADIUS:
             self.next_checkpoint += 1
+            if self.next_checkpoint == len(self.checkpoints):
+                return True
+        return False
 
     @staticmethod
     def get_angle(position, target):
