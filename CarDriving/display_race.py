@@ -50,9 +50,9 @@ def plot_race(checkpoints, path, inputs):
     plt.show()
 
 
-def plot_pod_paths(checkpoints, paths, pause_time):
+def plot_pod_paths(checkpoints, paths, extend_screen, pause_time):
     plt.figure(figsize=(5, 4))
-    ax = plt.axes(xlim=(0, WIDTH), ylim=(0, HEIGHT))
+    ax = plt.axes(xlim=(-WIDTH * 2, WIDTH * 3), ylim=(-HEIGHT * 2, HEIGHT * 3)) if extend_screen else plt.axes(xlim=(0, WIDTH), ylim=(0, HEIGHT))
     ax.set_aspect('equal')
     plt.gca().invert_yaxis()
 
@@ -90,9 +90,8 @@ if __name__ == "__main__":
     for i in range(10):
         path = [checkpoints[0]]
         for j in range(300):
-            new_location = [path[-1][0] * 25 * (random.randint(-2, 2) + math.sin(i / 10 * 2 * math.pi)),
-                            path[-1][0] * 25 * (random.randint(-2, 2) + math.cos(i / 10 * 2 * math.pi))]
+            new_location = [path[-1][k] + 100 * (random.randint(-2, 2) + math.sin((i / 10 + j / 1000 + k / 4) * 2 * math.pi)) for k in range(2)]
             path.append(new_location)
         paths.append(path)
     inputs = [[12, 70] for i in range(300)]
-    plot_pod_paths(checkpoints, paths, 20)
+    plot_pod_paths(checkpoints, paths, True, 20)
