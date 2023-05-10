@@ -16,7 +16,7 @@ class Game:
         self.angle = starting_angle
         self.position = starting_position
         self.next_checkpoint = 1
-        self.time = 0
+        self.time = 0  # todo : do something with this
 
     def apply_action(self, rotation, thrust):
         self.angle += max(-18, min(18, rotation))
