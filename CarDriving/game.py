@@ -24,6 +24,7 @@ class Game:
             self.angle += 360
         elif self.angle > 180:
             self.angle -= 360
+        thrust = max(0, min(200, thrust))
         angle_radians = math.radians(self.angle)
         facing_vector = [math.cos(angle_radians), math.sin(angle_radians)]
         facing_vector = np.array(facing_vector)
