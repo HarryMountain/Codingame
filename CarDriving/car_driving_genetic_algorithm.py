@@ -141,11 +141,11 @@ def fit_genetic_algorithm(game):
     # print(fitness_func_maker(game)(None, x, None))
 
     # Only get the part of the path to the end
-    return solution[:game.time]
+    return solution[:(game.time * 2)]
 
 
-# checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
-checkpoints = races[CURRENT_COURSE]
+checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
+# checkpoints = races[CURRENT_COURSE] todo
 game = Game(checkpoints)
 best_solution = fit_genetic_algorithm(game)
 
