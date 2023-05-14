@@ -7,13 +7,11 @@ from CarDriving.config import CHECKPOINT_RADIUS
 
 class Game:
 
-    def __init__(self, starting_position, starting_angle, checkpoints):
-        self.starting_position = starting_position
-        self.starting_angle = starting_angle
+    def __init__(self, checkpoints):
         self.checkpoints = checkpoints
+        self.position = checkpoints[-1]
+        self.angle = Game.get_angle(self.position, checkpoints[0])
         self.speed = np.array([0, 0], dtype=float)
-        self.angle = starting_angle
-        self.position = starting_position
         self.next_checkpoint = 0
         self.time = 0
 
@@ -36,23 +34,29 @@ class Game:
         self.angle = round(self.angle)
         return self.hit_checkpoint()
 
-    def run_through_game(self, actions, record_data):
+    def run_through_game(self, actions, record_nn_fit_data):
         self.reset()
         positions = []
-        inputs = []
         checks = []
+        angles = []
+        speeds = []
+        inputs = []
+
         self.time = len(actions) // 2
         for i in range(0, len(actions), 2):
             angle, thrust = actions[i], actions[i + 1]
             finished = self.apply_action(angle, thrust)
-            if record_data:
-                positions.append(self.position)
+            # Record data
+            positions.append(self.position)
+            checks.append(self.next_checkpoint)
+            if record_nn_fit_data:
+                angles.append(self.angle)
+                speeds.append(self.speed)
                 inputs.append([angle, thrust])
-                checks.append(self.next_checkpoint)
             if finished:
                 self.time = i // 2
                 break
-        return (positions, inputs, checks) if record_data else None
+        return (positions, checks, angles, speeds, inputs) if record_nn_fit_data else (positions, checks)
 
     def hit_checkpoint(self):
         checkpoint = self.checkpoints[self.next_checkpoint % len(self.checkpoints)]  # TODO Stop after all checkpoints
@@ -63,11 +67,17 @@ class Game:
                 return True
         return False
 
+
     @staticmethod
     def get_angle(position, target):
         facing = [target[0] - position[0], target[1] - position[1]]
         angle = math.atan2(facing[1], facing[0])
         return math.degrees(angle)
+
+    @staticmethod
+    def get_relative_angle(target_angle, facing_angle):
+        angle = ((target_angle - facing_angle + 180) % 360) - 180
+        return angle
 
     @staticmethod
     def get_pythagorean_distance(position, target):
@@ -84,8 +94,8 @@ class Game:
         return inputs
 
     def reset(self):
-        self.position = self.starting_position
-        self.angle = self.starting_angle
+        self.position = self.checkpoints[-1]
+        self.angle = Game.get_angle(self.position, self.checkpoints[0])
         self.speed = np.array([0, 0], dtype=float)
         self.next_checkpoint = 0
         self.time = 0
