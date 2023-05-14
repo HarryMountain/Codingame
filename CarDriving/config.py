@@ -1,7 +1,7 @@
 HEIGHT = 9000
 WIDTH = 16000
 CHECKPOINT_RADIUS = 600
-NUM_GENES = 300  # Todo increase this
+NUM_GENES = 600  # Todo increase this
 
 races = [
     [[2757, 4659], [3358, 2838], [10353, 1986], [2757, 4659], [3358, 2838], [10353, 1986], [2757, 4659], [3358, 2838], [10353, 1986]],
