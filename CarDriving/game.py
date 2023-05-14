@@ -1,7 +1,6 @@
-import random
-import sys
-import numpy as np
 import math
+
+import numpy as np
 
 from CarDriving.config import CHECKPOINT_RADIUS
 
@@ -15,7 +14,7 @@ class Game:
         self.speed = np.array([0, 0], dtype=float)
         self.angle = starting_angle
         self.position = starting_position
-        self.next_checkpoint = 1
+        self.next_checkpoint = 0
         self.time = 0
 
     def apply_action(self, rotation, thrust):
@@ -74,9 +73,15 @@ class Game:
     def get_pythagorean_distance(position, target):
         return math.sqrt((target[0] - position[0])**2 + (target[1] - position[1])**2)
 
-    def convert_inputs_into_action(self, inputs):
+    @staticmethod
+    def convert_inputs_to_actions(inputs):
         actions = [(inputs[i] * 18) if i % 2 == 0 else ((inputs[i] + 1) * 100) for i in range(len(inputs))]
         return actions
+
+    @staticmethod
+    def convert_actions_to_inputs(actions):
+        inputs = [(actions[i] / 18) if i % 2 == 0 else (actions[i] / 100 - 1) for i in range(len(actions))]
+        return inputs
 
     def reset(self):
         self.position = self.starting_position
