@@ -75,7 +75,7 @@ def fit_genetic_algorithm(game):
     init_range_high = 1
     gene_space = {'low': -1, 'high': 1}
 
-    num_generations = 10  # todo
+    num_generations = 100  # todo
     num_parents_mating = 20
     population_size = 100
 
@@ -109,11 +109,6 @@ def fit_genetic_algorithm(game):
     seed_inputs = seed_population[np.array(fitness).argmax()]
     for i in range(NUM_GENES):
         init_pop[0][i] = seed_inputs[i]
-
-    for x in init_pop:
-        # path = game.run_through_game(game.convert_inputs_into_action(x), True)[0]
-        # plot_pod_paths(game.checkpoints, [path], True, 5)
-        print(fitness_func_maker(game, False)(None, x, None))
 
     ga_instance.run()
     ga_instance.plot_fitness()
@@ -149,7 +144,7 @@ def fit_genetic_algorithm(game):
     return solution[:game.time]
 
 
-#checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
+# checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
 checkpoints = races[CURRENT_COURSE]
 game = Game(checkpoints)
 best_solution = fit_genetic_algorithm(game)
@@ -164,7 +159,7 @@ with open('training_data/nn_fit_data_' + str(CURRENT_COURSE), 'w') as f:
     # 4. Distance to next checkpoint
     for i in range(len(positions)):
         if checks[i] < len(checkpoints):
-            speed_angle = Game.get_relative_angle(Game.get_angle(speeds[i], [0, 0]), angles[i])
+            speed_angle = Game.get_relative_angle(Game.get_angle([0, 0], speeds[i]), angles[i])
             speed_magnitude = Game.get_pythagorean_distance([0, 0], speeds[i])
             next_checkpoint_angle = Game.get_relative_angle(Game.get_angle(positions[i], game.checkpoints[checks[i]]), angles[i])
             next_checkpoint_distance = Game.get_pythagorean_distance(positions[i], game.checkpoints[checks[i]])
