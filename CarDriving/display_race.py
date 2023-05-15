@@ -2,7 +2,7 @@ import math
 import random
 
 import matplotlib.animation as animation
-import matplotlib.patches as mpatches
+import matplotlib.patches as m_patches
 import matplotlib.path as mpath
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,7 +10,6 @@ import numpy as np
 from CarDriving.config import WIDTH, HEIGHT, CHECKPOINT_RADIUS
 
 TIME_PER_FRAME = 0.05
-# TIME_PER_FRAME = 1 # todo
 CAR_SIZE = 400
 
 
@@ -43,7 +42,7 @@ def plot_race(checkpoints, path, inputs):
         car.center = (path[i][0], path[i][1])
         angle, thrust = map(int, inputs[min(i, len(inputs) - 1)])
         output_text.set_text(output_template % (angle, thrust))
-        #print([[round(x, 2) for x in nn_data[i][j]] for j in range(2)]) todo
+        # print([[round(x, 2) for x in nn_data[i][j]] for j in range(2)]) todo
         return checkpoint_icons[0], checkpoint_icons[1], checkpoint_icons[2], car, output_text
 
     _ani = animation.FuncAnimation(fig, animate, init_func=init, frames=len(path), interval=TIME_PER_FRAME * 1000, blit=True)
@@ -52,7 +51,7 @@ def plot_race(checkpoints, path, inputs):
 
 def plot_pod_paths(checkpoints, paths, extend_screen, pause_time):
     plt.figure(figsize=(5, 4))
-    ax = plt.axes(xlim=(-WIDTH * 2, WIDTH * 3), ylim=(-HEIGHT * 2, HEIGHT * 3)) if extend_screen else plt.axes(xlim=(0, WIDTH), ylim=(0, HEIGHT))
+    ax = plt.axes(xlim=(-WIDTH, WIDTH * 2), ylim=(-HEIGHT, HEIGHT * 2)) if extend_screen else plt.axes(xlim=(0, WIDTH), ylim=(0, HEIGHT))
     ax.set_aspect('equal')
     plt.gca().invert_yaxis()
 
@@ -66,7 +65,7 @@ def plot_pod_paths(checkpoints, paths, extend_screen, pause_time):
     ax.add_patch(pod)
     for path in paths:
         string_path = mpath.Path(path)
-        track = mpatches.PathPatch(string_path, facecolor="none", lw=2)
+        track = m_patches.PathPatch(string_path, facecolor="none", lw=2)
         ax.add_patch(track)
 
     plt.show(block=False)
@@ -83,15 +82,21 @@ if __name__ == "__main__":
     plot_race(checkpoints, path, inputs)
 '''
 
-# Test display all races
-if __name__ == "__main__":
+
+def example_race_display():
     checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
     paths = []
     for i in range(10):
         path = [checkpoints[0]]
         for j in range(300):
-            new_location = [path[-1][k] + 100 * (random.randint(-2, 2) + math.sin((i / 10 + j / 1000 + k / 4) * 2 * math.pi)) for k in range(2)]
+            new_location = [
+                path[-1][k] + 100 * (random.randint(-2, 2) + math.sin((i / 10 + j / 1000 + k / 4) * 2 * math.pi)) for k
+                in range(2)]
             path.append(new_location)
         paths.append(path)
-    inputs = [[12, 70] for i in range(300)]
     plot_pod_paths(checkpoints, paths, True, 20)
+
+
+# Test display all races
+if __name__ == "__main__":
+    example_race_display()

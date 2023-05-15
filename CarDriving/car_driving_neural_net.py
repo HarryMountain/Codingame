@@ -6,18 +6,19 @@ import tensorflow as tf
 x_train = []
 y_train = []
 directory = 'training_data'
-for filename in os.listdir(directory):
+# for filename in os.listdir(directory): todo
+for filename in ['nn_fit_data_1']:
     file = os.path.join(directory, filename)
     with open(file, 'r') as f:
         for line in f:
             line = line.rstrip().split(',')
             values = [float(x) for x in line]
-            x_train.append(values[:4])
-            y_train.append(values[4:])
+            x_train.append(values[:6])
+            y_train.append(values[6:])
 
 
 model = tf.keras.models.Sequential([
-    tf.keras.layers.InputLayer(4),
+    tf.keras.layers.InputLayer(6),
     tf.keras.layers.Dense(32, activation='relu'),
     tf.keras.layers.Dropout(0.2),
     tf.keras.layers.Dense(10),
@@ -26,7 +27,6 @@ model = tf.keras.models.Sequential([
 print(model.summary())
 
 loss_fn = tf.keras.losses.MeanAbsoluteError(reduction="auto", name="mean_absolute_error")
-#loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
 model.compile(optimizer='adam', loss=loss_fn, metrics=['accuracy'])
 model.fit(x_train, y_train, epochs=100)
