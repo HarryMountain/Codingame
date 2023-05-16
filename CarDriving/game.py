@@ -45,7 +45,6 @@ class Game:
         self.time = len(actions) // 2
         for i in range(0, len(actions), 2):
             angle, thrust = actions[i], actions[i + 1]
-            finished = self.apply_action(angle, thrust)
             # Record data
             positions.append(self.position)
             checks.append(self.next_checkpoint)
@@ -53,6 +52,7 @@ class Game:
                 angles.append(self.angle)
                 speeds.append(self.speed)
                 inputs.append([angle, thrust])
+            finished = self.apply_action(angle, thrust)
             if finished:
                 self.time = i // 2
                 break
@@ -85,12 +85,12 @@ class Game:
 
     @staticmethod
     def convert_inputs_to_actions(inputs):
-        actions = [(inputs[i] * 18) if i % 2 == 0 else ((inputs[i] + 1) * 100) for i in range(len(inputs))]
+        actions = [(inputs[i] * 36 - 18) if i % 2 == 0 else (inputs[i] * 200) for i in range(len(inputs))]
         return actions
 
     @staticmethod
     def convert_actions_to_inputs(actions):
-        inputs = [(actions[i] / 18) if i % 2 == 0 else (actions[i] / 100 - 1) for i in range(len(actions))]
+        inputs = [(actions[i] / 36 + 0.5) if i % 2 == 0 else (actions[i] / 200) for i in range(len(actions))]
         return inputs
 
     def reset(self):
