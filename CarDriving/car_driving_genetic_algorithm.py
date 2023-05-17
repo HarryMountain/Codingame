@@ -1,9 +1,10 @@
 import random
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pygad
 
+from CarDriving.codingame_run import get_pythagorean_distance, get_relative_angle, convert_inputs_to_actions, \
+    convert_actions_to_inputs, get_nn_inputs, get_angle
 from CarDriving.config import NUM_GENES, races, CHROMOSOME_SIZE
 from CarDriving.display_race import plot_pod_paths
 from CarDriving.game import Game
@@ -13,7 +14,7 @@ CURRENT_COURSE = 1
 
 def fitness_func_maker(game, write_out):
     def fitness_func(_ga_instance, solution, _solution_idx):  # Solution is the inputs every game turn
-        actions = game.convert_inputs_to_actions(solution)
+        actions = convert_inputs_to_actions(solution)
         path, checks = game.run_through_game(actions, False)
         score = 0
         score_from_dist_to_next_check = 0
@@ -21,11 +22,11 @@ def fitness_func_maker(game, write_out):
             pos = path[i]
             check = checks[i]
             if check == game.next_checkpoint and check < len(game.checkpoints):
-                distance_between_checkpoints = Game.get_pythagorean_distance(game.checkpoints[check],
-                                                                             game.checkpoints[check - 1])
-                distance_to_next_checkpoint = Game.get_pythagorean_distance(pos, game.checkpoints[check])
+                distance_between_checkpoints = get_pythagorean_distance(game.checkpoints[check],
+                                                                        game.checkpoints[check - 1])
+                distance_to_next_checkpoint = get_pythagorean_distance(pos, game.checkpoints[check])
                 score_from_dist_to_next_check = max(score_from_dist_to_next_check, (
-                            1 - distance_to_next_checkpoint / distance_between_checkpoints) * 100)
+                        1 - distance_to_next_checkpoint / distance_between_checkpoints) * 100)
                 if i == len(path) - 1:
                     if write_out:
                         print('Distance to next checkpoint score : ' + str(score))
@@ -56,8 +57,9 @@ def generate_seed_population(population_size, checkpoints):
         finished = False
         for i in range(NUM_GENES):
             if not finished:
-                angle = max(-18, min(18, Game.get_relative_angle(Game.get_angle(game.position, game.checkpoints[game.next_checkpoint]), game.angle)))
-                inputs.extend(Game.convert_actions_to_inputs([angle, thrust]))
+                angle = max(-18, min(18, get_relative_angle(
+                    get_angle(game.position, game.checkpoints[game.next_checkpoint]), game.angle)))
+                inputs.extend(convert_actions_to_inputs([angle, thrust]))
                 finished = game.apply_action(angle, thrust)
             else:
                 inputs.extend(inputs[-2:])
@@ -112,7 +114,7 @@ def fit_genetic_algorithm(game):
 
     # Plot seed path
     print(fitness_func_maker(game, True)(None, seed_inputs, None))
-    path = game.run_through_game(game.convert_inputs_to_actions(seed_inputs), True)[0]
+    path = game.run_through_game(convert_inputs_to_actions(seed_inputs), True)[0]
     plot_pod_paths(game.checkpoints, [path], True, 30)
 
     ga_instance.run()
@@ -124,7 +126,7 @@ def fit_genetic_algorithm(game):
 
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
     print(solution_fitness)
-    actions = game.convert_inputs_to_actions(solution)
+    actions = convert_inputs_to_actions(solution)
 
     print(fitness_func_maker(game, True)(None, solution, None))
 
@@ -137,7 +139,7 @@ def fit_genetic_algorithm(game):
     print(solution_idx)
 
     # Plot final population
-    # paths = [game.run_through_game(game.convert_inputs_into_action(x), True)[0] for x in ga_instance.population]
+    # paths = [game.run_through_game(convert_inputs_into_action(x), True)[0] for x in ga_instance.population]
     # plot_pod_paths(game.checkpoints, paths, True, 5000)
 
     # for x in ga_instance.population:
@@ -158,7 +160,7 @@ game = Game(checkpoints)
 best_solution = fit_genetic_algorithm(game)
 
 # Write out the NN inputs and outputs
-actions = game.convert_inputs_to_actions(best_solution)
+actions = convert_inputs_to_actions(best_solution)
 positions, checks, angles, speeds, inputs = game.run_through_game(actions, True)
 
 """
@@ -173,25 +175,12 @@ plt.show()
 """
 
 with open('training_data/nn_fit_data_' + str(CURRENT_COURSE), 'w') as f:
-    # 1. angle of the speed
-    # 2. magnitude of the speed
-    # 3. Angle to next checkpoint
-    # 4. Distance to next checkpoint
-    # 5. Angle to following checkpoint
-    # 6. Distance to following checkpoint
     number_of_checkpoints = len(game.checkpoints)
     for i in range(len(positions)):
         if checks[i] < number_of_checkpoints:
-            speed_angle = Game.get_relative_angle(Game.get_angle([0, 0], speeds[i]), angles[i])
-            speed_magnitude = Game.get_pythagorean_distance([0, 0], speeds[i])
-            this_checkpoint_angle = Game.get_relative_angle(Game.get_angle(positions[i], game.checkpoints[checks[i]]), angles[i])
-            this_checkpoint_distance = Game.get_pythagorean_distance(positions[i], game.checkpoints[checks[i]])
-            if checks[i] < number_of_checkpoints - 1:
-                next_checkpoint_angle = Game.get_relative_angle(Game.get_angle(positions[i], game.checkpoints[checks[i + 1]]), angles[i])
-                next_checkpoint_distance = Game.get_pythagorean_distance(positions[i], game.checkpoints[checks[i + 1]])
-            else:
-                next_checkpoint_angle = this_checkpoint_angle
-                next_checkpoint_distance = 2 * this_checkpoint_distance
-            outputs = Game.convert_actions_to_inputs(inputs[i])
-            f.write(','.join(map(str, [speed_angle, speed_magnitude, this_checkpoint_angle, this_checkpoint_distance, next_checkpoint_angle, next_checkpoint_distance, outputs[0], outputs[1]])) + '\n')
-
+            next_checkpoint = game.checkpoints[
+                checks[i] + (1 if checks[i] < (number_of_checkpoints - 1) else 0)]
+            nn_data = get_nn_inputs(angles[i], speeds[i], positions[i], game.checkpoints[checks[i]], next_checkpoint)
+            outputs = convert_actions_to_inputs(inputs[i])
+            nn_data.extend(outputs)
+            f.write(','.join(map(str, nn_data)) + '\n')

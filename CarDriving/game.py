@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 
+from CarDriving.codingame_run import get_angle
 from CarDriving.config import CHECKPOINT_RADIUS
 
 
@@ -10,7 +11,7 @@ class Game:
     def __init__(self, checkpoints):
         self.checkpoints = checkpoints
         self.position = checkpoints[-1]
-        self.angle = Game.get_angle(self.position, checkpoints[0])
+        self.angle = get_angle(self.position, checkpoints[0])
         self.speed = np.array([0, 0], dtype=float)
         self.next_checkpoint = 0
         self.time = 0
@@ -67,35 +68,9 @@ class Game:
                 return True
         return False
 
-
-    @staticmethod
-    def get_angle(position, target):
-        facing = [target[0] - position[0], target[1] - position[1]]
-        angle = math.atan2(facing[1], facing[0])
-        return math.degrees(angle)
-
-    @staticmethod
-    def get_relative_angle(target_angle, facing_angle):
-        angle = ((target_angle - facing_angle + 180) % 360) - 180
-        return angle
-
-    @staticmethod
-    def get_pythagorean_distance(position, target):
-        return math.sqrt((target[0] - position[0])**2 + (target[1] - position[1])**2)
-
-    @staticmethod
-    def convert_inputs_to_actions(inputs):
-        actions = [(inputs[i] * 36 - 18) if i % 2 == 0 else (inputs[i] * 200) for i in range(len(inputs))]
-        return actions
-
-    @staticmethod
-    def convert_actions_to_inputs(actions):
-        inputs = [(actions[i] / 36 + 0.5) if i % 2 == 0 else (actions[i] / 200) for i in range(len(actions))]
-        return inputs
-
     def reset(self):
         self.position = self.checkpoints[-1]
-        self.angle = Game.get_angle(self.position, self.checkpoints[0])
+        self.angle = get_angle(self.position, self.checkpoints[0])
         self.speed = np.array([0, 0], dtype=float)
         self.next_checkpoint = 0
         self.time = 0

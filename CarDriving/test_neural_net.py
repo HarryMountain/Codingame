@@ -1,6 +1,6 @@
-import numpy as np
 import tensorflow as tf
 
+from CarDriving.codingame_run import get_nn_inputs, convert_inputs_to_actions
 from CarDriving.config import races
 from CarDriving.display_race import plot_pod_paths
 from CarDriving.game import Game
@@ -12,19 +12,14 @@ model = tf.keras.models.load_model('driving_nn_config.h5')
 
 positions = []
 for i in range(100):  # todo
-    speed_angle = Game.get_relative_angle(Game.get_angle([0, 0], game.speed), game.angle)
-    speed_magnitude = Game.get_pythagorean_distance([0, 0], game.speed)
-    next_checkpoint_angle = Game.get_relative_angle(Game.get_angle(game.position, game.checkpoints[game.next_checkpoint]),
-                                                    game.angle)
-    next_checkpoint_distance = Game.get_pythagorean_distance(game.position, game.checkpoints[game.next_checkpoint])
-    nn_outputs = model.predict([[speed_angle, speed_magnitude, next_checkpoint_angle, next_checkpoint_distance, next_checkpoint_angle, next_checkpoint_distance * 2]])  # TODO Add next checkpoint
+    next_checkpoint = game.checkpoints[game.next_checkpoint + (1 if game.next_checkpoint < (len(game.checkpoints) - 1) else 0)]
+    nn_inputs = get_nn_inputs(game.angle, game.speed, game.position, game.checkpoints[game.next_checkpoint], next_checkpoint)
+    nn_outputs = model.predict([nn_inputs])
     print(nn_outputs)
-    angle, thrust = Game.convert_inputs_to_actions(nn_outputs[0])
-    # outputs = model.predict(
-    #     np.expand_dims([speed_angle, speed_magnitude, next_checkpoint_angle, next_checkpoint_distance], 0))
-    print(int(speed_angle), int(speed_magnitude), int(next_checkpoint_angle), int(next_checkpoint_distance))
-    print(int(angle), int(thrust))
-    finished = game.apply_action(angle, thrust)
+    steer, thrust = convert_inputs_to_actions(nn_outputs[0])
+    print(*nn_inputs)
+    print(int(steer), int(thrust))
+    finished = game.apply_action(steer, thrust)
     positions.append(game.position)
     if finished:
         break
