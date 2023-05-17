@@ -17,7 +17,9 @@ for i in range(100):  # todo
     next_checkpoint_angle = Game.get_relative_angle(Game.get_angle(game.position, game.checkpoints[game.next_checkpoint]),
                                                     game.angle)
     next_checkpoint_distance = Game.get_pythagorean_distance(game.position, game.checkpoints[game.next_checkpoint])
-    angle, thrust = model.predict(np.expand_dims([speed_angle, speed_magnitude, next_checkpoint_angle, next_checkpoint_distance, next_checkpoint_angle, next_checkpoint_distance * 2], 0))[0]  # todo
+    nn_outputs = model.predict([[speed_angle, speed_magnitude, next_checkpoint_angle, next_checkpoint_distance, next_checkpoint_angle, next_checkpoint_distance * 2]])  # TODO Add next checkpoint
+    print(nn_outputs)
+    angle, thrust = Game.convert_inputs_to_actions(nn_outputs[0])
     # outputs = model.predict(
     #     np.expand_dims([speed_angle, speed_magnitude, next_checkpoint_angle, next_checkpoint_distance], 0))
     print(int(speed_angle), int(speed_magnitude), int(next_checkpoint_angle), int(next_checkpoint_distance))

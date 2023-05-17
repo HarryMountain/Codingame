@@ -192,5 +192,6 @@ with open('training_data/nn_fit_data_' + str(CURRENT_COURSE), 'w') as f:
             else:
                 next_checkpoint_angle = this_checkpoint_angle
                 next_checkpoint_distance = 2 * this_checkpoint_distance
-            f.write(','.join(map(str, [speed_angle, speed_magnitude, this_checkpoint_angle, this_checkpoint_distance, next_checkpoint_angle, next_checkpoint_distance, inputs[i][0], inputs[i][1]])) + '\n')
+            outputs = Game.convert_actions_to_inputs(inputs[i])
+            f.write(','.join(map(str, [speed_angle, speed_magnitude, this_checkpoint_angle, this_checkpoint_distance, next_checkpoint_angle, next_checkpoint_distance, outputs[0], outputs[1]])) + '\n')
 
