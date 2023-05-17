@@ -1,7 +1,10 @@
+import math
 import random
 import sys
+
 import numpy as np
-import math
+
+from CarDriving.config import MAX_SPEED
 
 HEIGHT = 9000
 WIDTH = 16000
@@ -23,12 +26,12 @@ def get_pythagorean_distance(position, target):
 
 
 def convert_inputs_to_actions(inputs):
-    actions = [(inputs[i] * 36 - 18) if i % 2 == 0 else (inputs[i] * 200) for i in range(len(inputs))]
+    actions = [(inputs[i] * 36 - 18) if i % 2 == 0 else (inputs[i] * MAX_SPEED) for i in range(len(inputs))]
     return actions
 
 
 def convert_actions_to_inputs(actions):
-    inputs = [(actions[i] / 36 + 0.5) if i % 2 == 0 else (actions[i] / 200) for i in range(len(actions))]
+    inputs = [(actions[i] / 36 + 0.5) if i % 2 == 0 else (actions[i] / MAX_SPEED) for i in range(len(actions))]
     return inputs
 
 
@@ -129,7 +132,7 @@ if __name__ == "__main__":
 
         # angle = random.randint(-18, 18)
         angle = 0
-        thrust = random.randint(0, 200)
+        thrust = random.randint(0, MAX_SPEED)
         game.apply_action(angle, thrust)
         # X Y THRUST MESSAGE
         print(f"EXPERT {str(angle)} {str(thrust)}")

@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 from CarDriving.codingame_run import get_angle
-from CarDriving.config import CHECKPOINT_RADIUS
+from CarDriving.config import CHECKPOINT_RADIUS, MAX_SPEED
 
 
 class Game:
@@ -22,7 +22,7 @@ class Game:
             self.angle += 360
         elif self.angle > 180:
             self.angle -= 360
-        thrust = max(0, min(200, thrust))
+        thrust = max(0, min(MAX_SPEED, thrust))
         angle_radians = math.radians(self.angle)
         facing_vector = [math.cos(angle_radians), math.sin(angle_radians)]
         facing_vector = np.array(facing_vector)
