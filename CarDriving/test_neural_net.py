@@ -1,17 +1,17 @@
 import tensorflow as tf
 
 from CarDriving.codingame_run import get_nn_inputs, convert_inputs_to_actions
-from CarDriving.config import races
+from CarDriving.config import races, NUM_GENES
 from CarDriving.display_race import plot_pod_paths
 from CarDriving.game import Game
 
-checkpoints = races[1]
+checkpoints = races[0]
 game = Game(checkpoints)
 
 model = tf.keras.models.load_model('driving_nn_config.h5')
 
 positions = []
-for i in range(100):  # todo
+for i in range(NUM_GENES):
     next_checkpoint = game.checkpoints[game.next_checkpoint + (1 if game.next_checkpoint < (len(game.checkpoints) - 1) else 0)]
     nn_inputs = get_nn_inputs(game.angle, game.speed, game.position, game.checkpoints[game.next_checkpoint], next_checkpoint)
     nn_outputs = model.predict([nn_inputs])

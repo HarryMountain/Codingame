@@ -17,6 +17,7 @@ class Game:
         self.time = 0
 
     def apply_action(self, rotation, thrust):
+
         self.angle += max(-18, min(18, rotation))
         if self.angle < -180:
             self.angle += 360

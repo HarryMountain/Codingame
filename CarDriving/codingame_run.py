@@ -42,13 +42,18 @@ def get_nn_inputs(angle, speed, position, checkpoint, next_checkpoint):
     # 4. Distance to next checkpoint
     # 5. Angle to following checkpoint
     # 6. Distance to following checkpoint
-    speed_angle = get_relative_angle(get_angle([0, 0], speed), angle)
-    speed_magnitude = get_pythagorean_distance([0, 0], speed)
-    checkpoint_angle = get_relative_angle(get_angle(position, checkpoint), angle)
-    checkpoint_distance = get_pythagorean_distance(position, checkpoint)
-    next_checkpoint_angle = get_relative_angle(get_angle(position, next_checkpoint), angle)
-    next_checkpoint_distance = get_pythagorean_distance(position, next_checkpoint)
+    speed_angle = get_relative_angle(get_angle([0, 0], speed), angle) / 360 + 0.5
+    speed_magnitude = convert_distances_to_value_between_0_and_1(get_pythagorean_distance([0, 0], speed))
+    checkpoint_angle = get_relative_angle(get_angle(position, checkpoint), angle) / 360 + 0.5
+    checkpoint_distance = convert_distances_to_value_between_0_and_1(get_pythagorean_distance(position, checkpoint))
+    next_checkpoint_angle = get_relative_angle(get_angle(position, next_checkpoint), angle) / 360 + 0.5
+    next_checkpoint_distance = convert_distances_to_value_between_0_and_1(get_pythagorean_distance(position, next_checkpoint))
     return [speed_angle, speed_magnitude, checkpoint_angle, checkpoint_distance, next_checkpoint_angle, next_checkpoint_distance]
+
+
+def convert_distances_to_value_between_0_and_1(distance):
+    value = 1 / (distance / 2000 + 1)
+    return value
 
 
 class Game:
