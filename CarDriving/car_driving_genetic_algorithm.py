@@ -1,3 +1,4 @@
+import math
 import random
 
 import numpy as np
@@ -9,7 +10,7 @@ from CarDriving.config import NUM_GENES, races, CHROMOSOME_SIZE
 from CarDriving.display_race import plot_pod_paths
 from CarDriving.game import Game
 
-CURRENT_COURSE = 10
+CURRENT_COURSE = 1
 
 
 def fitness_func_maker(game, write_out):
@@ -77,20 +78,20 @@ def fit_genetic_algorithm(game):
     init_range_high = 1
     gene_space = {'low': 0, 'high': 1}
 
-    num_generations = 100  # todo
+    num_generations = 200  # todo
     num_parents_mating = 20
-    population_size = 25
+    population_size = 50
 
     parent_selection_type = "rws"
     keep_parents = 15
     crossover_type = "single_point"
     mutation_type = "random"  # todo : change this
-    mutation_percent_genes = 0.00001
+    mutation_percent_genes = 1
 
     def on_generation(_ga_instance):
         _solution, _solution_fitness, _solution_idx = _ga_instance.best_solution()
         print('Gens : ' + str(_ga_instance.generations_completed) + '. Fitness : ' + str(_solution_fitness))
-        # print(_ga_instance.previous_generation_fitness)
+        #print(_ga_instance.previous_generation_fitness)
         # paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in _ga_instance.population]
         # plot_pod_paths(game.checkpoints, paths, True, 30)
 
@@ -107,8 +108,8 @@ def fit_genetic_algorithm(game):
                            keep_elitism=0,
                            mutation_type=mutation_type,
                            mutation_percent_genes=mutation_percent_genes,
-                           random_mutation_min_val=-0.000001,
-                           random_mutation_max_val=0.0000001,
+                           random_mutation_min_val=-0.01,
+                           random_mutation_max_val=0.01,
                            gene_space=gene_space,
                            on_generation=on_generation)
     # Get initial population and override the first few elements with our generated paths
@@ -158,7 +159,7 @@ def fit_genetic_algorithm(game):
     # print(fitness_func_maker(game)(None, x, None))
 
     # Only get the part of the path to the end
-    return solution[:(game.time * 2)]
+    return solution[:(math.ceil(game.time) * 2)]
 
 
 # checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]

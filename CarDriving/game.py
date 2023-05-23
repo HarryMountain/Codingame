@@ -1,8 +1,9 @@
 import math
+from copy import deepcopy
 
 import numpy as np
 
-from CarDriving.codingame_run import get_angle
+from CarDriving.codingame_run import get_angle, get_pythagorean_distance
 from CarDriving.config import CHECKPOINT_RADIUS, MAX_SPEED
 
 
@@ -54,14 +55,18 @@ class Game:
                 angles.append(self.angle)
                 speeds.append(self.speed)
                 inputs.append([angle, thrust])
+            old_position = deepcopy(self.position)
             finished = self.apply_action(angle, thrust)
             if finished:
-                self.time = i // 2
+                # Hit the last checkpoint. Add the fraction of the last timestep needed to get to the end
+                self.time = i // 2 - 1
+                distance_to_checkpoint = get_pythagorean_distance(old_position, self.checkpoints[self.next_checkpoint - 1]) - CHECKPOINT_RADIUS
+                self.time += distance_to_checkpoint / get_pythagorean_distance([0, 0], self.speed)
                 break
         return (positions, checks, angles, speeds, inputs) if record_nn_fit_data else (positions, checks)
 
     def hit_checkpoint(self):
-        checkpoint = self.checkpoints[self.next_checkpoint % len(self.checkpoints)]  # TODO Stop after all checkpoints
+        checkpoint = self.checkpoints[self.next_checkpoint % len(self.checkpoints)]
         distance_from_checkpoint = math.sqrt((self.position[0] - checkpoint[0])**2 + (self.position[1] - checkpoint[1])**2)
         if distance_from_checkpoint <= CHECKPOINT_RADIUS:
             self.next_checkpoint += 1
