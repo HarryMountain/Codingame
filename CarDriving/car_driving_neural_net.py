@@ -36,8 +36,11 @@ loss_fn = tf.keras.losses.MeanSquaredError()
 
 #model.compile(optimizer='adam', loss=loss_fn, metrics=['accuracy'])
 model.compile(loss=loss_fn, metrics=['accuracy'])
-model.fit(x=x_train, y=y_train, epochs=2000)
+#model.fit(x=x_train, y=y_train, epochs=2000)
+model.fit(x=x_train, y=y_train, epochs=20) #  todo
 model.save('driving_nn_config.h5')
+model.save('test_nn_save')
+
 evaluation = model.evaluate(x_train, y_train, verbose=2)
 print(evaluation)
 

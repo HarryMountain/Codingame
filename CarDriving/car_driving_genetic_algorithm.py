@@ -9,10 +9,11 @@ from CarDriving.config import NUM_GENES, races, CHROMOSOME_SIZE
 from CarDriving.display_race import plot_pod_paths
 from CarDriving.game import Game
 
-CURRENT_COURSE = 1
+CURRENT_COURSE = 10
 
 
 def fitness_func_maker(game, write_out):
+    # TODO : Make the time score continuous so the function can optimize it
     def fitness_func(_ga_instance, solution, _solution_idx):  # Solution is the inputs every game turn
         actions = convert_inputs_to_actions(solution)
         path, checks = game.run_through_game(actions, False)
@@ -51,14 +52,16 @@ def fitness_func_maker(game, write_out):
 def generate_seed_population(population_size, checkpoints):
     # Run the race pointing at the next checkpoint
     population = []
-    for thrust in random.sample(range(10, 150), population_size):
+    for item in range(population_size):
+    # for thrust in random.sample(range(10, 150), population_size):
         game = Game(checkpoints)
         inputs = []
         finished = False
         for i in range(NUM_GENES):
             if not finished:
                 angle = max(-18, min(18, get_relative_angle(
-                    get_angle(game.position, game.checkpoints[game.next_checkpoint]), game.angle)))
+                    get_angle(game.position, game.checkpoints[game.next_checkpoint]), game.angle) + random.randint(-10, 10)))
+                thrust = random.randint(0, 200)
                 inputs.extend(convert_actions_to_inputs([angle, thrust]))
                 finished = game.apply_action(angle, thrust)
             else:
@@ -70,23 +73,26 @@ def generate_seed_population(population_size, checkpoints):
 def fit_genetic_algorithm(game):
     fitness_function = fitness_func_maker(game, False)
 
-    init_range_low = -1
+    init_range_low = 0
     init_range_high = 1
-    gene_space = {'low': -1, 'high': 1}
+    gene_space = {'low': 0, 'high': 1}
 
     num_generations = 100  # todo
     num_parents_mating = 20
-    population_size = 100
+    population_size = 25
 
-    parent_selection_type = "sss"
-    keep_parents = 3
-    crossover_type = "uniform"
-    mutation_type = "scramble"
-    mutation_percent_genes = 2
+    parent_selection_type = "rws"
+    keep_parents = 15
+    crossover_type = "single_point"
+    mutation_type = "random"  # todo : change this
+    mutation_percent_genes = 0.00001
 
     def on_generation(_ga_instance):
         _solution, _solution_fitness, _solution_idx = _ga_instance.best_solution()
         print('Gens : ' + str(_ga_instance.generations_completed) + '. Fitness : ' + str(_solution_fitness))
+        # print(_ga_instance.previous_generation_fitness)
+        # paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in _ga_instance.population]
+        # plot_pod_paths(game.checkpoints, paths, True, 30)
 
     ga_instance = pygad.GA(num_generations=num_generations,
                            num_parents_mating=num_parents_mating,
@@ -101,21 +107,25 @@ def fit_genetic_algorithm(game):
                            keep_elitism=0,
                            mutation_type=mutation_type,
                            mutation_percent_genes=mutation_percent_genes,
+                           random_mutation_min_val=-0.000001,
+                           random_mutation_max_val=0.0000001,
                            gene_space=gene_space,
                            on_generation=on_generation)
-
     # Get initial population and override the first few elements with our generated paths
     init_pop = ga_instance.population
     seed_population = generate_seed_population(population_size, checkpoints)
-    fitness = [fitness_func_maker(game, False)(None, x, None) for x in seed_population]
-    seed_inputs = seed_population[np.array(fitness).argmax()]
-    for i in range(CHROMOSOME_SIZE):
-        init_pop[0][i] = seed_inputs[i]
+    #seed_inputs = [x for _, x in sorted(zip(fitness, seed_population), reverse=True)][:10]
+    for seed in range(population_size):
+        for i in range(CHROMOSOME_SIZE):
+            init_pop[seed][i] = seed_population[seed][i]
 
-    # Plot seed path
-    print(fitness_func_maker(game, True)(None, seed_inputs, None))
-    path = game.run_through_game(convert_inputs_to_actions(seed_inputs), True)[0]
-    plot_pod_paths(game.checkpoints, [path], True, 30)
+    # Plot best seed path
+    fitness = [fitness_func_maker(game, False)(None, x, None) for x in seed_population]
+    seed_inputs = [x for _, x in sorted(zip(fitness, seed_population), reverse=True)][:10]
+    for seed_input in seed_inputs:
+        print(fitness_func_maker(game, True)(None, seed_input, None))
+    paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in seed_inputs]
+    plot_pod_paths(game.checkpoints, paths, True, 30)
 
     ga_instance.run()
     ga_instance.plot_fitness()
@@ -125,7 +135,7 @@ def fit_genetic_algorithm(game):
     # plot_pod_paths(game.checkpoints, paths, 10)
 
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
-    print(solution_fitness)
+    # print(solution_fitness)
     actions = convert_inputs_to_actions(solution)
 
     print(fitness_func_maker(game, True)(None, solution, None))
