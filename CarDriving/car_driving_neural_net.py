@@ -7,8 +7,8 @@ import tensorflow as tf
 x_train = []
 y_train = []
 directory = 'training_data'
-# for filename in os.listdir(directory): todo
-for filename in ['nn_fit_data_1']:
+for filename in os.listdir(directory):
+# for filename in ['nn_fit_data_1']:
     file = os.path.join(directory, filename)
     with open(file, 'r') as f:
         for line in f:
@@ -20,11 +20,10 @@ x_train = np.array(x_train)
 y_train = np.array(y_train)
 
 model = tf.keras.models.Sequential([
-    #tf.keras.layers.Input(shape=(6,)),
     tf.keras.layers.Dense(32, input_shape=(6,), activation='relu'),
     tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dropout(0.2),
-    tf.keras.layers.Dense(20, activation='relu'),
+    #tf.keras.layers.Dropout(0.2),
+    #tf.keras.layers.Dense(20, activation='relu'),
     tf.keras.layers.Dense(10, activation='relu'),
     tf.keras.layers.Dense(2, activation='sigmoid')
 ])

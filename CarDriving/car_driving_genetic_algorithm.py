@@ -10,11 +10,10 @@ from CarDriving.config import NUM_GENES, races, CHROMOSOME_SIZE
 from CarDriving.display_race import plot_pod_paths
 from CarDriving.game import Game
 
-CURRENT_COURSE = 1
+CURRENT_COURSE = 5
 
 
 def fitness_func_maker(game, write_out):
-    # TODO : Make the time score continuous so the function can optimize it
     def fitness_func(_ga_instance, solution, _solution_idx):  # Solution is the inputs every game turn
         actions = convert_inputs_to_actions(solution)
         path, checks = game.run_through_game(actions, False)
@@ -79,46 +78,53 @@ def fit_genetic_algorithm(game):
     gene_space = {'low': 0, 'high': 1}
 
     num_generations = 200  # todo
-    num_parents_mating = 20
+    num_parents_mating = 16
     population_size = 50
 
-    parent_selection_type = "rws"
-    keep_parents = 15
-    crossover_type = "single_point"
-    mutation_type = "random"  # todo : change this
-    mutation_percent_genes = 1
+    parent_selection_type = "sss"
+    keep_elitism = 15
+    #keep_parents = 15
+
+    crossover_type = None #"single_point" #  "single_point" # "single_point" todo
+    mutation_type = "adaptive"  # todo : change this
+    # mutation_percent_genes = 1
+    mutation_probability = [0.05, 0.005]
 
     def on_generation(_ga_instance):
         _solution, _solution_fitness, _solution_idx = _ga_instance.best_solution()
         print('Gens : ' + str(_ga_instance.generations_completed) + '. Fitness : ' + str(_solution_fitness))
-        #print(_ga_instance.previous_generation_fitness)
+        print(sorted(_ga_instance.previous_generation_fitness, reverse=True))
         # paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in _ga_instance.population]
-        # plot_pod_paths(game.checkpoints, paths, True, 30)
+        #plot_pod_paths(game.checkpoints, paths, True, 10)
+        #for path in paths:
+        #    plot_pod_paths(game.checkpoints, [path], True, 0.5)
 
+    seed_population = generate_seed_population(population_size, checkpoints)
     ga_instance = pygad.GA(num_generations=num_generations,
                            num_parents_mating=num_parents_mating,
                            fitness_func=fitness_function,
                            sol_per_pop=population_size,
+                           initial_population=seed_population,
                            num_genes=CHROMOSOME_SIZE,
                            init_range_low=init_range_low,
                            init_range_high=init_range_high,
                            parent_selection_type=parent_selection_type,
-                           keep_parents=keep_parents,
                            crossover_type=crossover_type,
-                           keep_elitism=0,
+                           keep_elitism=keep_elitism,
                            mutation_type=mutation_type,
-                           mutation_percent_genes=mutation_percent_genes,
+                           mutation_probability=mutation_probability,
                            random_mutation_min_val=-0.01,
                            random_mutation_max_val=0.01,
                            gene_space=gene_space,
                            on_generation=on_generation)
+    print(ga_instance.summary())
     # Get initial population and override the first few elements with our generated paths
     init_pop = ga_instance.population
-    seed_population = generate_seed_population(population_size, checkpoints)
+
     #seed_inputs = [x for _, x in sorted(zip(fitness, seed_population), reverse=True)][:10]
-    for seed in range(population_size):
-        for i in range(CHROMOSOME_SIZE):
-            init_pop[seed][i] = seed_population[seed][i]
+    #for seed in range(population_size):
+    #    for i in range(CHROMOSOME_SIZE):
+    #        init_pop[seed][i] = seed_population[seed][i]
 
     # Plot best seed path
     fitness = [fitness_func_maker(game, False)(None, x, None) for x in seed_population]
@@ -126,7 +132,7 @@ def fit_genetic_algorithm(game):
     for seed_input in seed_inputs:
         print(fitness_func_maker(game, True)(None, seed_input, None))
     paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in seed_inputs]
-    plot_pod_paths(game.checkpoints, paths, True, 30)
+    #plot_pod_paths(game.checkpoints, paths, True, 30)
 
     ga_instance.run()
     ga_instance.plot_fitness()
