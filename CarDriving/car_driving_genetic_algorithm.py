@@ -1,16 +1,15 @@
 import math
 import random
 
-import numpy as np
 import pygad
 
 from CarDriving.codingame_run import get_pythagorean_distance, get_relative_angle, convert_inputs_to_actions, \
     convert_actions_to_inputs, get_nn_inputs, get_angle
 from CarDriving.config import NUM_GENES, races, CHROMOSOME_SIZE
-from CarDriving.display_race import plot_pod_paths
+from CarDriving.display_race import plot_pod_paths, plot_race
 from CarDriving.game import Game
 
-CURRENT_COURSE = 5
+CURRENT_COURSE = 2
 
 
 def fitness_func_maker(game, write_out):
@@ -53,7 +52,6 @@ def generate_seed_population(population_size, checkpoints):
     # Run the race pointing at the next checkpoint
     population = []
     for item in range(population_size):
-    # for thrust in random.sample(range(10, 150), population_size):
         game = Game(checkpoints)
         inputs = []
         finished = False
@@ -83,11 +81,12 @@ def fit_genetic_algorithm(game):
 
     parent_selection_type = "sss"
     keep_elitism = 15
-    #keep_parents = 15
 
-    crossover_type = None #"single_point" #  "single_point" # "single_point" todo
-    mutation_type = "adaptive"  # todo : change this
-    # mutation_percent_genes = 1
+    # 747, 741
+    # 740, 743
+    crossover_type = 'single_point' # None  # 'scattered'
+    #crossover_type = None
+    mutation_type = "adaptive"
     mutation_probability = [0.05, 0.005]
 
     def on_generation(_ga_instance):
@@ -99,6 +98,7 @@ def fit_genetic_algorithm(game):
         #for path in paths:
         #    plot_pod_paths(game.checkpoints, [path], True, 0.5)
 
+    # Create initial population
     seed_population = generate_seed_population(population_size, checkpoints)
     ga_instance = pygad.GA(num_generations=num_generations,
                            num_parents_mating=num_parents_mating,
@@ -113,18 +113,11 @@ def fit_genetic_algorithm(game):
                            keep_elitism=keep_elitism,
                            mutation_type=mutation_type,
                            mutation_probability=mutation_probability,
-                           random_mutation_min_val=-0.01,
-                           random_mutation_max_val=0.01,
+                           random_mutation_min_val=-0.1,
+                           random_mutation_max_val=0.1,
                            gene_space=gene_space,
                            on_generation=on_generation)
     print(ga_instance.summary())
-    # Get initial population and override the first few elements with our generated paths
-    init_pop = ga_instance.population
-
-    #seed_inputs = [x for _, x in sorted(zip(fitness, seed_population), reverse=True)][:10]
-    #for seed in range(population_size):
-    #    for i in range(CHROMOSOME_SIZE):
-    #        init_pop[seed][i] = seed_population[seed][i]
 
     # Plot best seed path
     fitness = [fitness_func_maker(game, False)(None, x, None) for x in seed_population]
@@ -137,18 +130,12 @@ def fit_genetic_algorithm(game):
     ga_instance.run()
     ga_instance.plot_fitness()
 
-    # Plot initial population
-    # paths = [game.run_through_game(game.convert_inputs_into_action(x), True)[0] for x in init_pop]
-    # plot_pod_paths(game.checkpoints, paths, 10)
-
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
-    # print(solution_fitness)
     actions = convert_inputs_to_actions(solution)
 
     print(fitness_func_maker(game, True)(None, solution, None))
 
     path, checks = game.run_through_game(actions, False)
-    # plot_race(checkpoints, path, inputs)
     plot_pod_paths(game.checkpoints, [path], True, 500)
     print(solution)
     print(actions)
@@ -172,13 +159,18 @@ def fit_genetic_algorithm(game):
 # checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000)),
 #               np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000)),
 #               np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
-checkpoints = races[CURRENT_COURSE]  # todo
-game = Game(checkpoints)
-best_solution = fit_genetic_algorithm(game)
+checkpoints = races[CURRENT_COURSE]
+current_game = Game(checkpoints)
+best_solution = fit_genetic_algorithm(current_game)
+
 
 # Write out the NN inputs and outputs
 actions = convert_inputs_to_actions(best_solution)
-positions, checks, angles, speeds, inputs = game.run_through_game(actions, True)
+positions, checks, angles, speeds, inputs = current_game.run_through_game(actions, True)
+
+# Show driving
+display_actions = [[actions[i], actions[i + 1]] for i in range(0, len(actions), 2)]
+plot_race(checkpoints, positions, display_actions, checks)
 
 """
 checkpoint_angles = []
@@ -192,12 +184,16 @@ plt.show()
 """
 
 with open('training_data/nn_fit_data_' + str(CURRENT_COURSE), 'w') as f:
-    number_of_checkpoints = len(game.checkpoints)
+    number_of_checkpoints = len(current_game.checkpoints)
     for i in range(len(positions)):
         if checks[i] < number_of_checkpoints:
-            next_checkpoint = game.checkpoints[
+            next_checkpoint = current_game.checkpoints[
                 checks[i] + (1 if checks[i] < (number_of_checkpoints - 1) else 0)]
-            nn_data = get_nn_inputs(angles[i], speeds[i], positions[i], game.checkpoints[checks[i]], next_checkpoint)
+            nn_data = get_nn_inputs(angles[i], speeds[i], positions[i], current_game.checkpoints[checks[i]], next_checkpoint)
             outputs = convert_actions_to_inputs(inputs[i])
             nn_data.extend(outputs)
             f.write(','.join(map(str, nn_data)) + '\n')
+
+# 0 746
+# 1 749
+# 2

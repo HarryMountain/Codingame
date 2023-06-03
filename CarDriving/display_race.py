@@ -13,7 +13,7 @@ TIME_PER_FRAME = 0.05
 CAR_SIZE = 400
 
 
-def plot_race(checkpoints, path, inputs):
+def plot_race(checkpoints, path, inputs, next_checkpoints):
     print(len(path), len(inputs))
     fig = plt.figure(figsize=(5, 4))
     ax = plt.axes(xlim=(0, WIDTH), ylim=(0, HEIGHT))
@@ -27,11 +27,11 @@ def plot_race(checkpoints, path, inputs):
     car = plt.Circle((path[0][0], path[0][1]), CAR_SIZE, color='b')
     ax.add_patch(car)
 
-    output_template = 'steer %i thrust %i'
+    output_template = 'steer %i thrust %i checkpoint %i'
     output_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
 
     def init():
-        for j in range(3):
+        for j in range(len(checkpoints)):
             checkpoint_icons[j].center = (checkpoints[j][0], checkpoints[j][1])
             ax.add_patch(checkpoint_icons[j])
         car.center = (path[0][0], path[0][1])
@@ -41,7 +41,8 @@ def plot_race(checkpoints, path, inputs):
     def animate(i):
         car.center = (path[i][0], path[i][1])
         angle, thrust = map(int, inputs[min(i, len(inputs) - 1)])
-        output_text.set_text(output_template % (angle, thrust))
+        next_checkpoint = next_checkpoints[min(i, len(next_checkpoints) - 1)]
+        output_text.set_text(output_template % (angle, thrust, next_checkpoint))
         # print([[round(x, 2) for x in nn_data[i][j]] for j in range(2)]) todo
         return checkpoint_icons[0], checkpoint_icons[1], checkpoint_icons[2], car, output_text
 
