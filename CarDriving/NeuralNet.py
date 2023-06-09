@@ -32,7 +32,7 @@ class Neuron:
             case 'sigmoid':
                 self.A = self.sigmoid(self.Z)
             case 'relu':
-                self.A = self.sigmoid(self.Z)  # todo = use activation
+                self.A = max(0, self.Z)
             case _:
                 self.A = self.Z
         return self.A
@@ -52,7 +52,7 @@ class NeuralNetwork:
             self.input_sizes.append(number_of_neurons)
 
     def evaluate(self, inputs):
-        network_data = deepcopy(inputs)
+        network_data = [deepcopy(inputs)]
         for layer in range(self.num_layers):
             layer_outputs = []
             for neuron_idx in range(len(self.neurons[layer])):
@@ -91,8 +91,3 @@ def create_nn_from_json(file_name):
     f.close()
 
     return nn
-
-
-if __name__ == "__main__":
-    file = 'saved_nn.json'
-    create_nn_from_json(file)
