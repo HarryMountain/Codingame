@@ -4,14 +4,14 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from CarDriving.NeuralNet import create_nn_from_json
+from CarDriving.neural_net import create_nn_from_json
 
 # iterate over files in the directory of fitting data to get training data
 x_train = []
 y_train = []
 directory = 'training_data'
-#for filename in os.listdir(directory): todo
-for filename in ['nn_fit_data_1']:
+# for filename in ['nn_fit_data_1']:
+for filename in os.listdir(directory):
     file = os.path.join(directory, filename)
     with open(file, 'r') as f:
         for line in f:
