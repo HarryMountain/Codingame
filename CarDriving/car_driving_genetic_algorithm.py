@@ -9,7 +9,7 @@ from CarDriving.config import NUM_GENES, races, CHROMOSOME_SIZE
 from CarDriving.display_race import plot_pod_paths, plot_race
 from CarDriving.game import Game
 
-CURRENT_COURSE = 2
+CURRENT_COURSE = 4
 
 
 def fitness_func_maker(game, write_out):
@@ -196,4 +196,6 @@ with open('training_data/nn_fit_data_' + str(CURRENT_COURSE), 'w') as f:
 
 # 0 746
 # 1 749
-# 2
+# 2 1668
+# 3 1873
+# 4
