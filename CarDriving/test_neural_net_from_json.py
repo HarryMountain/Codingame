@@ -1,10 +1,10 @@
 from CarDriving.codingame_run import get_nn_inputs, convert_inputs_to_actions
-from CarDriving.config import races, MAX_ROUNDS
+from CarDriving.config import RACES, MAX_ROUNDS
 from CarDriving.display_race import plot_race
 from CarDriving.game import Game
 from CarDriving.neural_net import create_nn_from_json
 
-checkpoints = races[0]
+checkpoints = RACES[0]
 game = Game(checkpoints)
 
 nn_from_file = create_nn_from_json('saved_nn.json')

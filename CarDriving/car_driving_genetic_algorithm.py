@@ -5,33 +5,32 @@ import pygad
 
 from CarDriving.codingame_run import get_pythagorean_distance, get_relative_angle, convert_inputs_to_actions, \
     convert_actions_to_inputs, get_nn_inputs, get_angle
-from CarDriving.config import NUM_GENES, races, CHROMOSOME_SIZE
+from CarDriving.config import RACES, INPUTS_PER_CHECKPOINT, MAX_ROUNDS
 from CarDriving.display_race import plot_pod_paths, plot_race
 from CarDriving.game import Game
 
-CURRENT_COURSE = 4
+CURRENT_COURSE = 2
 
 
 def fitness_func_maker(game, write_out):
     def fitness_func(_ga_instance, solution, _solution_idx):  # Solution is the inputs every game turn
-        actions = convert_inputs_to_actions(solution)
-        path, checks = game.run_through_game(actions, False)
+        path, next_checkpoints = game.run_through_game(convert_inputs_to_actions(solution), False)
         score = 0
         score_from_dist_to_next_check = 0
         for i in range(len(path)):
             pos = path[i]
-            check = checks[i]
-            if check == game.next_checkpoint and check < len(game.checkpoints):
-                distance_between_checkpoints = get_pythagorean_distance(game.checkpoints[check],
-                                                                        game.checkpoints[check - 1])
-                distance_to_next_checkpoint = get_pythagorean_distance(pos, game.checkpoints[check])
+            next_checkpoint = next_checkpoints[i]
+            if next_checkpoint == game.next_checkpoint and next_checkpoint < len(game.checkpoints):
+                distance_between_checkpoints = get_pythagorean_distance(game.checkpoints[next_checkpoint],
+                                                                        game.checkpoints[next_checkpoint - 1])
+                distance_to_next_checkpoint = get_pythagorean_distance(pos, game.checkpoints[next_checkpoint])
                 score_from_dist_to_next_check = max(score_from_dist_to_next_check, (
                         1 - distance_to_next_checkpoint / distance_between_checkpoints) * 100)
                 if i == len(path) - 1:
                     if write_out:
                         print('Distance to next checkpoint score : ' + str(score))
                 if write_out:
-                    print(pos, check, int(distance_to_next_checkpoint), i)
+                    print(pos, next_checkpoint, int(distance_to_next_checkpoint), i)
         score += score_from_dist_to_next_check
         if write_out:
             print('Closest approach to next checkpoint score : ' + str(score_from_dist_to_next_check))
@@ -48,64 +47,92 @@ def fitness_func_maker(game, write_out):
     return fitness_func
 
 
-def generate_seed_population(population_size, checkpoints):
+def generate_seed_population(population_size, checkpoints, gene_length):
+    # TODO  : adapt this to new gene definition
     # Run the race pointing at the next checkpoint
     population = []
     for item in range(population_size):
         game = Game(checkpoints)
-        inputs = []
+        gene = []
         finished = False
-        for i in range(NUM_GENES):
+        these_positions = [game.position]
+        these_actions = []
+        action_vector = []
+        for i in range(MAX_ROUNDS):
             if not finished:
                 angle = max(-18, min(18, get_relative_angle(
                     get_angle(game.position, game.checkpoints[game.next_checkpoint]), game.angle) + random.randint(-10, 10)))
-                thrust = random.randint(0, 200)
-                inputs.extend(convert_actions_to_inputs([angle, thrust]))
+                thrust = random.randint(20, 150)
+                action_index = game.get_action_index(gene_length)
+                # print(i, action_index)
+                for j in range(len(gene), action_index, 2):
+                    gene.extend(convert_actions_to_inputs([angle, thrust]))
+                    action_vector.append([angle, thrust])
+                these_actions.append([action_index, angle, thrust])
                 finished = game.apply_action(angle, thrust)
+                these_positions.append(game.position)
+                print(action_index, angle, thrust, these_actions[-3:])
+                print(gene[-10:])
             else:
-                inputs.extend(inputs[-2:])
-        population.append(inputs)
+                gene.extend(gene[-2:])
+        #print(' Path', these_positions)  # todo
+        #print(' Actions', these_actions)  # todo
+        #print(' Actions', action_vector)  # todo
+        print(these_positions)
+        population.append(gene[:gene_length])
     return population
 
 
 def fit_genetic_algorithm(game):
-    fitness_function = fitness_func_maker(game, False)
-
+    # Gene configuration
+    gene_length = INPUTS_PER_CHECKPOINT * len(game.checkpoints)
+    population_size = 1 # todo
     init_range_low = 0
     init_range_high = 1
     gene_space = {'low': 0, 'high': 1}
 
+    # Evolution configuration
     num_generations = 200  # todo
     num_parents_mating = 16
-    population_size = 50
-
     parent_selection_type = "sss"
     keep_elitism = 15
-
-    # 747, 741
-    # 740, 743
     crossover_type = 'single_point' # None  # 'scattered'
-    #crossover_type = None
+    # crossover_type = None todo
     mutation_type = "adaptive"
-    mutation_probability = [0.05, 0.005]
+    mutation_probability = [0.1, 0.01]
 
     def on_generation(_ga_instance):
         _solution, _solution_fitness, _solution_idx = _ga_instance.best_solution()
         print('Gens : ' + str(_ga_instance.generations_completed) + '. Fitness : ' + str(_solution_fitness))
         print(sorted(_ga_instance.previous_generation_fitness, reverse=True))
-        # paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in _ga_instance.population]
-        #plot_pod_paths(game.checkpoints, paths, True, 10)
+        paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in _ga_instance.population]
+        plot_pod_paths(game.checkpoints, paths, True, 30)
         #for path in paths:
         #    plot_pod_paths(game.checkpoints, [path], True, 0.5)
+        #plot_pod_paths(game.checkpoints, [paths[0]], True, 0.5)
 
     # Create initial population
-    seed_population = generate_seed_population(population_size, checkpoints)
+    seed_population = generate_seed_population(population_size, game.checkpoints, gene_length)
+    # Plot best seed path
+    fitness = [fitness_func_maker(game, False)(None, x, None) for x in seed_population]
+    print(sorted(fitness, reverse=True))
+    seed_inputs = [x for _, x in sorted(zip(fitness, seed_population), reverse=True)][:10]
+    # for seed_input in seed_inputs:
+    #    print(fitness_func_maker(game, True)(None, seed_input, None))
+    paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in seed_inputs]
+    print('Run paths', paths[0])
+    #plot_pod_paths(game.checkpoints, paths, True, 30)
+    plot_pod_paths(game.checkpoints, [paths[0]], True, 30)
+    print(paths[0])
+
+    # Generate GA
+    fitness_function = fitness_func_maker(game, False)
     ga_instance = pygad.GA(num_generations=num_generations,
                            num_parents_mating=num_parents_mating,
                            fitness_func=fitness_function,
                            sol_per_pop=population_size,
                            initial_population=seed_population,
-                           num_genes=CHROMOSOME_SIZE,
+                           num_genes=gene_length,
                            init_range_low=init_range_low,
                            init_range_high=init_range_high,
                            parent_selection_type=parent_selection_type,
@@ -118,15 +145,6 @@ def fit_genetic_algorithm(game):
                            gene_space=gene_space,
                            on_generation=on_generation)
     print(ga_instance.summary())
-
-    # Plot best seed path
-    fitness = [fitness_func_maker(game, False)(None, x, None) for x in seed_population]
-    seed_inputs = [x for _, x in sorted(zip(fitness, seed_population), reverse=True)][:10]
-    for seed_input in seed_inputs:
-        print(fitness_func_maker(game, True)(None, seed_input, None))
-    paths = [game.run_through_game(convert_inputs_to_actions(x), True)[0] for x in seed_inputs]
-    #plot_pod_paths(game.checkpoints, paths, True, 30)
-
     ga_instance.run()
     ga_instance.plot_fitness()
 
@@ -137,10 +155,10 @@ def fit_genetic_algorithm(game):
 
     path, checks = game.run_through_game(actions, False)
     plot_pod_paths(game.checkpoints, [path], True, 500)
-    print(solution)
-    print(actions)
-    print(solution_fitness)
-    print(solution_idx)
+    #print(solution)
+    #print(actions)
+    #print(solution_fitness)
+    #print(solution_idx)
 
     # Plot final population
     # paths = [game.run_through_game(convert_inputs_into_action(x), True)[0] for x in ga_instance.population]
@@ -159,8 +177,7 @@ def fit_genetic_algorithm(game):
 # checkpoints = [np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000)),
 #               np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000)),
 #               np.array((1000, 3000)), np.array((5000, 2000)), np.array((10000, 7000))]
-checkpoints = races[CURRENT_COURSE]
-current_game = Game(checkpoints)
+current_game = Game(RACES[CURRENT_COURSE])
 best_solution = fit_genetic_algorithm(current_game)
 
 
@@ -170,7 +187,7 @@ positions, checks, angles, speeds, inputs = current_game.run_through_game(action
 
 # Show driving
 display_actions = [[actions[i], actions[i + 1]] for i in range(0, len(actions), 2)]
-plot_race(checkpoints, positions, display_actions, checks)
+plot_race(current_game.checkpoints, positions, display_actions, checks)
 
 """
 checkpoint_angles = []
@@ -183,7 +200,7 @@ plt.scatter(checkpoint_angles, steers)
 plt.show()
 """
 
-with open('training_data/nn_fit_data_' + str(CURRENT_COURSE), 'w') as f:
+with open('training_data/nn_fit_data_new_' + str(CURRENT_COURSE), 'w') as f:
     number_of_checkpoints = len(current_game.checkpoints)
     for i in range(len(positions)):
         if checks[i] < number_of_checkpoints:
@@ -194,8 +211,8 @@ with open('training_data/nn_fit_data_' + str(CURRENT_COURSE), 'w') as f:
             nn_data.extend(outputs)
             f.write(','.join(map(str, nn_data)) + '\n')
 
-# 0 746
-# 1 749
+# 0 746     816
+# 1 749     730
 # 2 1668
 # 3 1873
 # 4

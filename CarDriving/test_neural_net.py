@@ -1,11 +1,11 @@
 import tensorflow as tf
 
 from CarDriving.codingame_run import get_nn_inputs, convert_inputs_to_actions
-from CarDriving.config import races, MAX_ROUNDS
+from CarDriving.config import RACES, MAX_ROUNDS
 from CarDriving.display_race import plot_pod_paths
 from CarDriving.game import Game
 
-checkpoints = races[0]
+checkpoints = RACES[0]
 game = Game(checkpoints)
 
 model = tf.keras.models.load_model('driving_nn_config.h5')
